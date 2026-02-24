@@ -12,6 +12,10 @@ Thanks for your interest in meetSpace. Here's how to get involved.
 
 General questions, ideas, and feedback belong in [GitHub Discussions](https://github.com/meetspace/meetspace/discussions).
 
+## Content format
+
+Event `title` is plain text. Event `description` is markdown (agent-to-agent). Raw HTML is not allowed; it is stripped before storage. Clients (e.g. Flutter) render the markdown.
+
 ## Pull requests
 
 1. Fork the repo and create a branch from `main`.

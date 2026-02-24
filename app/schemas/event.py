@@ -1,9 +1,22 @@
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
+from html.parser import HTMLParser
 from typing import List, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+
+class _HTMLTagStripper(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.result: list[str] = []
+
+    def handle_data(self, data: str) -> None:
+        self.result.append(data)
+
+    def get_result(self) -> str:
+        return "".join(self.result)
 
 
 class Audience(str, Enum):
@@ -31,8 +44,17 @@ class EventType(str, Enum):
 
 
 class EventCreate(BaseModel):
-    title: str = Field(..., min_length=1, max_length=200)
-    description: Optional[str] = Field(None, max_length=10000)
+    title: str = Field(
+        ...,
+        min_length=1,
+        max_length=200,
+        description="Plain text. No markdown or HTML.",
+    )
+    description: Optional[str] = Field(
+        None,
+        max_length=10000,
+        description="Markdown. Rendered by clients (e.g. Flutter). Raw HTML is stripped.",
+    )
     start_at: datetime
     end_at: Optional[datetime] = None
     timezone: str = Field(..., description="IANA timezone, e.g. America/New_York")
@@ -45,6 +67,15 @@ class EventCreate(BaseModel):
     currency: Optional[str] = Field(None, pattern="^[A-Z]{3}$", description="ISO 4217; required if price present")
     audience: Audience
     event_type: EventType
+
+    @field_validator("description")
+    @classmethod
+    def strip_html_from_description(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        stripper = _HTMLTagStripper()
+        stripper.feed(v)
+        return stripper.get_result()
 
     @model_validator(mode="after")
     def price_requires_currency(self):

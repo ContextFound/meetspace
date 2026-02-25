@@ -2,8 +2,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.config import settings
 from app.routers import auth, events
 from app.schemas.common import ErrorDetail, ErrorResponse
 
@@ -38,6 +40,14 @@ app = FastAPI(
 )
 
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "X-API-Key"],
+)
 
 app.include_router(auth.router, prefix="/v1/auth", tags=["auth"])
 app.include_router(events.router, prefix="/v1/events", tags=["events"])

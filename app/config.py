@@ -1,3 +1,5 @@
+from typing import List
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,6 +14,12 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://user:password@localhost:5432/meetspace"
     environment: str = "development"
     api_key_prefix: str = "ms_test_"
+    cors_origins: List[str] = [
+        "http://localhost:3000",
+        "http://localhost:8080",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8080",
+    ]
 
     @property
     def is_production(self) -> bool:

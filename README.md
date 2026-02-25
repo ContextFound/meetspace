@@ -20,6 +20,4 @@ uvicorn app.main:app --reload
 - `GET /v1/events/{event_id}` — Single event by ID
 - `POST /v1/events` — Create event (readwrite tier only)
 
-Event content format: `title` is plain text; `description` is markdown (agent-to-agent, intended for client rendering e.g. Flutter). Raw HTML in descriptions is stripped before storage.
-
 Docs: `/docs` | OpenAPI: `/openapi.json`

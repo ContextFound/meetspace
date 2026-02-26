@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     environment: str = "development"
     api_key_prefix: str = "ms_test_"
     cors_origins: List[str] = [
+        "https://meetspace-events.web.app",
+        "https://meetspace-events.firebaseapp.com",
         "http://localhost:3000",
         "http://localhost:8080",
         "http://127.0.0.1:3000",

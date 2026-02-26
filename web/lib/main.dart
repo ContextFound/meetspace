@@ -50,6 +50,7 @@ class _MeetSpaceAppState extends State<MeetSpaceApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'meetspace',
+      debugShowCheckedModeBanner: false,
       theme: meetSpaceTheme,
       home: _loading
           ? const Scaffold(

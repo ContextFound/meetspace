@@ -6,6 +6,43 @@ import '../models/auth.dart';
 import '../models/event.dart';
 import 'config.dart';
 
+class ApiLogEntry {
+  ApiLogEntry({
+    required this.method,
+    required this.url,
+    required this.statusCode,
+    required this.timestamp,
+    this.requestBody,
+    this.responseBody,
+    this.error,
+    required this.duration,
+  });
+
+  final String method;
+  final String url;
+  final int? statusCode;
+  final DateTime timestamp;
+  final String? requestBody;
+  final String? responseBody;
+  final String? error;
+  final Duration duration;
+}
+
+class ApiLog {
+  ApiLog._();
+  static final instance = ApiLog._();
+
+  final List<ApiLogEntry> entries = [];
+  static const _maxEntries = 100;
+
+  void add(ApiLogEntry entry) {
+    entries.insert(0, entry);
+    if (entries.length > _maxEntries) entries.removeLast();
+  }
+
+  void clear() => entries.clear();
+}
+
 class ApiException implements Exception {
   final int statusCode;
   final String message;
@@ -57,13 +94,48 @@ class MeetSpaceApiClient {
     throw ApiException(response.statusCode, message, code);
   }
 
+  Future<http.Response> _loggedRequest(
+    String method,
+    String url,
+    Future<http.Response> Function() action, {
+    String? requestBody,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+    try {
+      final r = await action();
+      stopwatch.stop();
+      ApiLog.instance.add(ApiLogEntry(
+        method: method,
+        url: url,
+        statusCode: r.statusCode,
+        timestamp: DateTime.now(),
+        requestBody: requestBody,
+        responseBody: r.body.isEmpty ? null : r.body,
+        duration: stopwatch.elapsed,
+      ));
+      return r;
+    } catch (e) {
+      stopwatch.stop();
+      ApiLog.instance.add(ApiLogEntry(
+        method: method,
+        url: url,
+        statusCode: null,
+        timestamp: DateTime.now(),
+        requestBody: requestBody,
+        error: e.toString(),
+        duration: stopwatch.elapsed,
+      ));
+      rethrow;
+    }
+  }
+
   /// Register a new agent. No API key required.
   Future<RegisterResponse> register(RegisterRequest req) async {
-    final r = await http.post(
-      Uri.parse(_url('/v1/auth/register')),
-      headers: _headers,
-      body: jsonEncode(req.toJson()),
-    );
+    final body = jsonEncode(req.toJson());
+    final url = _url('/v1/auth/register');
+    final r = await _loggedRequest('POST', url, requestBody: body, () {
+      return http.post(Uri.parse(url), headers: _headers, body: body);
+    });
     return _handleResponse(r, RegisterResponse.fromJson);
   }
 
@@ -88,29 +160,31 @@ class MeetSpaceApiClient {
     int limit = 20,
   }) async {
     final q = 'lat=$lat&lng=$lng&radius=$radius&limit=$limit';
-    final uri = cursor != null
+    final url = cursor != null
         ? _url('/v1/events/nearby?$q&cursor=${Uri.encodeComponent(cursor)}')
         : _url('/v1/events/nearby?$q');
-    final r = await http.get(Uri.parse(uri), headers: _headers);
+    final r = await _loggedRequest('GET', url, () {
+      return http.get(Uri.parse(url), headers: _headers);
+    });
     return _handleResponse(r, EventsNearbyResponse.fromJson);
   }
 
   /// Get a single event by ID.
   Future<EventResponse> getEvent(String eventId) async {
-    final r = await http.get(
-      Uri.parse(_url('/v1/events/${Uri.encodeComponent(eventId)}')),
-      headers: _headers,
-    );
+    final url = _url('/v1/events/${Uri.encodeComponent(eventId)}');
+    final r = await _loggedRequest('GET', url, () {
+      return http.get(Uri.parse(url), headers: _headers);
+    });
     return _handleResponse(r, EventResponse.fromJson);
   }
 
   /// Create an event. Requires readwrite tier (403 if read-only).
   Future<EventResponse> createEvent(EventCreate body) async {
-    final r = await http.post(
-      Uri.parse(_url('/v1/events')),
-      headers: _headers,
-      body: jsonEncode(body.toJson()),
-    );
+    final reqBody = jsonEncode(body.toJson());
+    final url = _url('/v1/events');
+    final r = await _loggedRequest('POST', url, requestBody: reqBody, () {
+      return http.post(Uri.parse(url), headers: _headers, body: reqBody);
+    });
     return _handleResponse(r, EventResponse.fromJson);
   }
 }

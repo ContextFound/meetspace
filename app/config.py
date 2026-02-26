@@ -20,10 +20,17 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
         "http://127.0.0.1:8080",
     ]
+    cors_origins_dev: List[str] = ["*"]
 
     @property
     def is_production(self) -> bool:
         return self.environment.lower() == "production"
+
+    @property
+    def effective_cors_origins(self) -> List[str]:
+        if self.is_production:
+            return self.cors_origins
+        return self.cors_origins_dev
 
 
 settings = Settings()

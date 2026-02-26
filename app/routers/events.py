@@ -25,7 +25,7 @@ RADIUS_MAX = 100.0
 async def nearby(
     lat: float = Query(..., ge=-90, le=90, description="Latitude"),
     lng: float = Query(..., ge=-180, le=180, description="Longitude"),
-    radius: float = Query(..., ge=RADIUS_MIN, le=RADIUS_MAX, description="Radius in miles"),
+    radius: Optional[float] = Query(None, ge=RADIUS_MIN, le=RADIUS_MAX, description="Radius in miles. Omit for all events."),
     cursor: Optional[str] = Query(None, description="Pagination cursor"),
     limit: int = Query(20, ge=1, le=100, description="Page size"),
     db: AsyncSession = Depends(get_db),

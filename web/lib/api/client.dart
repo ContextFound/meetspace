@@ -151,15 +151,16 @@ class MeetSpaceApiClient {
     }
   }
 
-  /// List events near (lat, lng) within radius miles.
+  /// List events near (lat, lng) within radius miles. Omit radius for all events.
   Future<EventsNearbyResponse> getEventsNearby(
     double lat,
     double lng,
-    double radius, {
+    double? radius, {
     String? cursor,
     int limit = 20,
   }) async {
-    final q = 'lat=$lat&lng=$lng&radius=$radius&limit=$limit';
+    var q = 'lat=$lat&lng=$lng&limit=$limit';
+    if (radius != null) q += '&radius=$radius';
     final url = cursor != null
         ? _url('/v1/events/nearby?$q&cursor=${Uri.encodeComponent(cursor)}')
         : _url('/v1/events/nearby?$q');

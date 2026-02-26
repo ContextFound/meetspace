@@ -99,24 +99,27 @@ async def get_events_nearby(
     db: AsyncSession,
     lat: float,
     lng: float,
-    radius_miles: float,
+    radius_miles: Optional[float] = None,
     cursor: Optional[str] = None,
     limit: int = DEFAULT_PAGE_SIZE,
 ) -> Tuple[List[EventResponse], Optional[str]]:
-    radius_m = radius_miles * MILES_TO_METERS
     now = datetime.now(timezone.utc)
-    point_wkt = f"SRID=4326;POINT({lng} {lat})"
 
-    stmt = (
-        select(Event)
-        .where(
-            Event.start_at >= now,
+    filters = [Event.start_at >= now]
+    if radius_miles is not None:
+        radius_m = radius_miles * MILES_TO_METERS
+        point_wkt = f"SRID=4326;POINT({lng} {lat})"
+        filters.append(
             func.ST_DWithin(
                 Event.coordinates,
                 func.ST_GeogFromText(point_wkt),
                 radius_m,
-            ),
+            )
         )
+
+    stmt = (
+        select(Event)
+        .where(*filters)
         .order_by(Event.event_id)
         .limit(limit + 1)
     )

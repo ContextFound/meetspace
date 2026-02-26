@@ -31,12 +31,15 @@ class _EventsListScreenState extends State<EventsListScreen> {
   late MeetSpaceApiClient _client;
   double _lat = _defaultLat;
   double _lng = _defaultLng;
-  double _radius = 25;
+  double _selectedRadius = 25;
+  bool _anyDistance = false;
   List<EventResponse> _events = [];
   String? _nextCursor;
   bool _loading = true;
   String? _error;
   bool _loadingMore = false;
+
+  double? get _effectiveRadius => _anyDistance ? null : _selectedRadius;
 
   @override
   void initState() {
@@ -89,7 +92,7 @@ class _EventsListScreenState extends State<EventsListScreen> {
       _nextCursor = null;
     });
     try {
-      final res = await _client.getEventsNearby(_lat, _lng, _radius);
+      final res = await _client.getEventsNearby(_lat, _lng, _effectiveRadius);
       if (!mounted) return;
       setState(() {
         _events = res.events;
@@ -118,7 +121,7 @@ class _EventsListScreenState extends State<EventsListScreen> {
       final res = await _client.getEventsNearby(
         _lat,
         _lng,
-        _radius,
+        _effectiveRadius,
         cursor: _nextCursor,
       );
       if (!mounted) return;
@@ -134,7 +137,15 @@ class _EventsListScreenState extends State<EventsListScreen> {
   }
 
   void _onRadiusChanged(double value) {
-    setState(() => _radius = value);
+    setState(() {
+      _selectedRadius = value;
+      _anyDistance = false;
+    });
+    _loadEvents();
+  }
+
+  void _onAnyDistance() {
+    setState(() => _anyDistance = true);
     _loadEvents();
   }
 
@@ -169,7 +180,7 @@ class _EventsListScreenState extends State<EventsListScreen> {
                 ),
                 const SizedBox(width: 8),
                 DropdownButton<double>(
-                  value: _radius,
+                  value: _selectedRadius,
                   items: _radiusOptions
                       .map((r) => DropdownMenuItem(
                             value: r,
@@ -178,6 +189,18 @@ class _EventsListScreenState extends State<EventsListScreen> {
                       .toList(),
                   onChanged: (v) {
                     if (v != null) _onRadiusChanged(v);
+                  },
+                ),
+                const SizedBox(width: 8),
+                FilterChip(
+                  label: const Text('Any'),
+                  selected: _anyDistance,
+                  onSelected: (selected) {
+                    if (selected) {
+                      _onAnyDistance();
+                    } else {
+                      _onRadiusChanged(_selectedRadius);
+                    }
                   },
                 ),
               ],

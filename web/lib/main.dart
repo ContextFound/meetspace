@@ -24,7 +24,16 @@ class _MeetSpaceAppState extends State<MeetSpaceApp> {
   void initState() {
     super.initState();
     _loadKey();
+    themeNotifier.addListener(_onThemeChanged);
   }
+
+  @override
+  void dispose() {
+    themeNotifier.removeListener(_onThemeChanged);
+    super.dispose();
+  }
+
+  void _onThemeChanged() => setState(() {});
 
   Future<void> _loadKey() async {
     final key = await AuthService.instance.getStoredApiKey();
@@ -51,7 +60,9 @@ class _MeetSpaceAppState extends State<MeetSpaceApp> {
     return MaterialApp(
       title: 'meetspace',
       debugShowCheckedModeBanner: false,
-      theme: meetSpaceTheme,
+      theme: meetSpaceLightTheme,
+      darkTheme: meetSpaceDarkTheme,
+      themeMode: themeNotifier.value,
       home: _loading
           ? const Scaffold(
               body: Center(child: CircularProgressIndicator()),

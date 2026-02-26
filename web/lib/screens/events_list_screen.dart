@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import '../api/client.dart';
 import '../models/event.dart';
 import '../services/auth_service.dart';
+import '../theme/app_theme.dart';
 import 'create_event_screen.dart';
 import 'event_detail_screen.dart';
 
@@ -32,7 +33,7 @@ class _EventsListScreenState extends State<EventsListScreen> {
   double _lat = _defaultLat;
   double _lng = _defaultLng;
   double _selectedRadius = 25;
-  bool _anyDistance = false;
+  bool _anyDistance = true;
   List<EventResponse> _events = [];
   String? _nextCursor;
   bool _loading = true;
@@ -155,6 +156,15 @@ class _EventsListScreenState extends State<EventsListScreen> {
       appBar: AppBar(
         title: const Text('meetspace'),
         actions: [
+          IconButton(
+            icon: Icon(
+              themeNotifier.isDark ? Icons.light_mode : Icons.dark_mode,
+            ),
+            tooltip: themeNotifier.isDark
+                ? 'Switch to light mode'
+                : 'Switch to dark mode',
+            onPressed: themeNotifier.toggle,
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: widget.onLogout,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../api/client.dart';
 import '../models/auth.dart';
 import '../services/auth_service.dart';
+import '../theme/app_theme.dart';
 import '../widgets/api_log_dialog.dart';
 import 'show_key_screen.dart';
 
@@ -181,10 +182,26 @@ class _LandingScreenState extends State<LandingScreen>
             Positioned(
               top: 8,
               right: 8,
-              child: IconButton(
-                icon: const Icon(Icons.bug_report_outlined),
-                tooltip: 'API call log',
-                onPressed: _showApiLog,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: Icon(
+                      themeNotifier.isDark
+                          ? Icons.light_mode
+                          : Icons.dark_mode,
+                    ),
+                    tooltip: themeNotifier.isDark
+                        ? 'Switch to light mode'
+                        : 'Switch to dark mode',
+                    onPressed: themeNotifier.toggle,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.bug_report_outlined),
+                    tooltip: 'API call log',
+                    onPressed: _showApiLog,
+                  ),
+                ],
               ),
             ),
           ],

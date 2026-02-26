@@ -45,7 +45,7 @@ async def register_agent(db: AsyncSession, req: RegisterRequest) -> RegisterResp
         agent_name=req.agent_name,
         key_hash=key_hash,
         key_prefix=key_prefix,
-        tier="read",
+        tier="readwrite",
         rate_limit=50,
         is_active=True,
     )

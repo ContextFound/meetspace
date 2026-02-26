@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-
-import 'landing_screen.dart' show copyToClipboard;
+import 'package:meetspace_web/widgets/api_log_dialog.dart';
 
 class ShowKeyScreen extends StatelessWidget {
   const ShowKeyScreen({

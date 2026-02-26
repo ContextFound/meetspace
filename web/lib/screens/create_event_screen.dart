@@ -1,7 +1,11 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../api/client.dart';
 import '../models/event.dart';
+import '../widgets/api_log_dialog.dart';
 
 class CreateEventScreen extends StatefulWidget {
   const CreateEventScreen({
@@ -27,8 +31,15 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   final _lngController = TextEditingController(text: '-122.4194');
   final _urlController = TextEditingController();
   final _priceController = TextEditingController();
-  final _timezoneController = TextEditingController(text: 'America/Los_Angeles');
 
+  static const _timezones = {
+    'America/New_York': 'Eastern (ET)',
+    'America/Chicago': 'Central (CT)',
+    'America/Denver': 'Mountain (MT)',
+    'America/Los_Angeles': 'Pacific (PT)',
+  };
+
+  String _timezone = 'America/New_York';
   DateTime _startAt = DateTime.now().add(const Duration(days: 1));
   DateTime? _endAt;
   Audience _audience = Audience.adults;
@@ -38,7 +49,36 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    for (final c in [
+      _titleController,
+      _locationNameController,
+      _latController,
+      _lngController,
+    ]) {
+      c.addListener(_onRequiredFieldChanged);
+    }
+  }
+
+  void _onRequiredFieldChanged() => setState(() {});
+
+  bool get _canSubmit =>
+      _titleController.text.trim().isNotEmpty &&
+      _locationNameController.text.trim().isNotEmpty &&
+      _latController.text.trim().isNotEmpty &&
+      _lngController.text.trim().isNotEmpty;
+
+  @override
   void dispose() {
+    for (final c in [
+      _titleController,
+      _locationNameController,
+      _latController,
+      _lngController,
+    ]) {
+      c.removeListener(_onRequiredFieldChanged);
+    }
     _titleController.dispose();
     _descriptionController.dispose();
     _locationNameController.dispose();
@@ -47,7 +87,6 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     _lngController.dispose();
     _urlController.dispose();
     _priceController.dispose();
-    _timezoneController.dispose();
     super.dispose();
   }
 
@@ -76,46 +115,59 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       _loading = true;
       _error = null;
     });
+    final eventCreate = EventCreate(
+      title: _titleController.text.trim(),
+      description: _descriptionController.text.trim().isEmpty
+          ? null
+          : _descriptionController.text.trim(),
+      startAt: _startAt,
+      endAt: _endAt,
+      timezone: _timezone,
+      locationName: _locationNameController.text.trim(),
+      address: _addressController.text.trim().isEmpty
+          ? null
+          : _addressController.text.trim(),
+      lat: lat,
+      lng: lng,
+      url: _urlController.text.trim().isEmpty
+          ? null
+          : _urlController.text.trim(),
+      price: price,
+      currency: price != null ? (_currency ?? 'USD') : null,
+      audience: _audience,
+      eventType: _eventType,
+    );
+    debugPrint('[CreateEvent] Sending request: ${jsonEncode(eventCreate.toJson())}');
     try {
-      await widget.client.createEvent(EventCreate(
-        title: _titleController.text.trim(),
-        description: _descriptionController.text.trim().isEmpty
-            ? null
-            : _descriptionController.text.trim(),
-        startAt: _startAt,
-        endAt: _endAt,
-        timezone: _timezoneController.text.trim(),
-        locationName: _locationNameController.text.trim(),
-        address: _addressController.text.trim().isEmpty
-            ? null
-            : _addressController.text.trim(),
-        lat: lat,
-        lng: lng,
-        url: _urlController.text.trim().isEmpty
-            ? null
-            : _urlController.text.trim(),
-        price: price,
-        currency: price != null ? (_currency ?? 'USD') : null,
-        audience: _audience,
-        eventType: _eventType,
-      ));
+      final response = await widget.client.createEvent(eventCreate);
+      debugPrint('[CreateEvent] Success — created event ${response.eventId}');
       if (!mounted) return;
       widget.onCreated();
       Navigator.of(context).pop();
     } on ApiException catch (e) {
+      debugPrint('[CreateEvent] API error ${e.statusCode}: ${e.message}');
       if (!mounted) return;
+      final msg = e.statusCode == 403
+          ? 'Your key does not have permission to create events.'
+          : e.message;
       setState(() {
         _loading = false;
-        _error = e.statusCode == 403
-            ? 'Your key does not have permission to create events.'
-            : e.message;
+        _error = msg;
       });
-    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg)),
+      );
+    } catch (e, st) {
+      debugPrint('[CreateEvent] Unexpected error: $e\n$st');
       if (!mounted) return;
+      final msg = e.toString();
       setState(() {
         _loading = false;
-        _error = e.toString();
+        _error = msg;
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg)),
+      );
     }
   }
 
@@ -124,6 +176,13 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Create event'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.bug_report_outlined),
+            tooltip: 'API call log',
+            onPressed: () => showApiLogDialog(context),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -142,7 +201,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
               TextFormField(
                 controller: _titleController,
                 decoration: const InputDecoration(
-                  labelText: 'Title',
+                  labelText: 'Title *',
                   border: OutlineInputBorder(),
                 ),
                 validator: (v) =>
@@ -230,21 +289,25 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              TextFormField(
-                controller: _timezoneController,
-                decoration: InputDecoration(
-                  labelText: 'Timezone (IANA)',
-                  border: const OutlineInputBorder(),
-                  hintText: 'America/Los_Angeles',
+              DropdownButtonFormField<String>(
+                value: _timezone,
+                decoration: const InputDecoration(
+                  labelText: 'Timezone *',
+                  border: OutlineInputBorder(),
                 ),
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Required' : null,
+                items: _timezones.entries
+                    .map((e) => DropdownMenuItem(
+                          value: e.key,
+                          child: Text(e.value),
+                        ))
+                    .toList(),
+                onChanged: (v) => setState(() => _timezone = v!),
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _locationNameController,
                 decoration: const InputDecoration(
-                  labelText: 'Location name',
+                  labelText: 'Location name *',
                   border: OutlineInputBorder(),
                 ),
                 validator: (v) =>
@@ -265,13 +328,18 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                     child: TextFormField(
                       controller: _latController,
                       decoration: const InputDecoration(
-                        labelText: 'Lat',
+                        labelText: 'Lat *',
                         border: OutlineInputBorder(),
                       ),
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                         signed: true,
                       ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Required';
+                        if (double.tryParse(v.trim()) == null) return 'Invalid number';
+                        return null;
+                      },
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -279,13 +347,18 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                     child: TextFormField(
                       controller: _lngController,
                       decoration: const InputDecoration(
-                        labelText: 'Lng',
+                        labelText: 'Lng *',
                         border: OutlineInputBorder(),
                       ),
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                         signed: true,
                       ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Required';
+                        if (double.tryParse(v.trim()) == null) return 'Invalid number';
+                        return null;
+                      },
                     ),
                   ),
                 ],
@@ -356,7 +429,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
               ),
               const SizedBox(height: 24),
               FilledButton(
-                onPressed: _loading ? null : _submit,
+                onPressed: _loading || !_canSubmit ? null : _submit,
                 child: _loading
                     ? const SizedBox(
                         height: 20,

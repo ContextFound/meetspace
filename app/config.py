@@ -15,14 +15,13 @@ class Settings(BaseSettings):
     environment: str = "development"
     api_key_prefix: str = "ms_test_"
     cors_origins: List[str] = [
-        "https://meetspace-events.web.app",
-        "https://meetspace-events.firebaseapp.com",
+        "https://meetspace.events",
+        "https://www.meetspace.events",
         "http://localhost:3000",
         "http://localhost:8080",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:8080",
     ]
-    cors_origins_dev: List[str] = ["*"]
 
     @property
     def is_production(self) -> bool:
@@ -32,7 +31,7 @@ class Settings(BaseSettings):
     def effective_cors_origins(self) -> List[str]:
         if self.is_production:
             return self.cors_origins
-        return self.cors_origins_dev
+        return ["*"]
 
 
 settings = Settings()

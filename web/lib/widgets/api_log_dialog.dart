@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../api/client.dart';
+import '../api/config.dart';
 
 String formatApiLogEntry(ApiLogEntry entry) {
   final buf = StringBuffer();
@@ -52,8 +53,37 @@ void showApiLogDialog(BuildContext context) {
   );
 }
 
-class ApiLogDialog extends StatelessWidget {
+class ApiLogDialog extends StatefulWidget {
   const ApiLogDialog({super.key});
+
+  @override
+  State<ApiLogDialog> createState() => _ApiLogDialogState();
+}
+
+class _ApiLogDialogState extends State<ApiLogDialog> {
+  bool _healthLoading = false;
+  bool? _healthOk;
+
+  Future<void> _runHealthCheck() async {
+    setState(() {
+      _healthLoading = true;
+      _healthOk = null;
+    });
+    try {
+      final ok = await MeetSpaceApiClient(baseUrl: apiBaseUrl).healthCheck();
+      if (!mounted) return;
+      setState(() {
+        _healthOk = ok;
+        _healthLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _healthOk = false;
+        _healthLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -82,6 +112,28 @@ class ApiLogDialog extends StatelessWidget {
                       },
                       child: const Text('Clear'),
                     ),
+                  IconButton(
+                    icon: _healthLoading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(
+                            _healthOk == null
+                                ? Icons.monitor_heart_outlined
+                                : _healthOk!
+                                    ? Icons.check_circle
+                                    : Icons.error,
+                            color: _healthOk == null
+                                ? null
+                                : _healthOk!
+                                    ? Colors.green
+                                    : Colors.red,
+                          ),
+                    tooltip: 'Health check',
+                    onPressed: _healthLoading ? null : _runHealthCheck,
+                  ),
                   IconButton(
                     icon: const Icon(Icons.close),
                     onPressed: () => Navigator.of(context).pop(),

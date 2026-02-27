@@ -179,6 +179,15 @@ class MeetSpaceApiClient {
     return _handleResponse(r, EventResponse.fromJson);
   }
 
+  /// Health check. No API key required.
+  Future<bool> healthCheck() async {
+    final url = _url('/health');
+    final r = await _loggedRequest('GET', url, () {
+      return http.get(Uri.parse(url), headers: _headers);
+    });
+    return r.statusCode == 200;
+  }
+
   /// Create an event. Requires readwrite tier (403 if read-only).
   Future<EventResponse> createEvent(EventCreate body) async {
     final reqBody = jsonEncode(body.toJson());

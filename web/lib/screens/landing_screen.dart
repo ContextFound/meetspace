@@ -143,12 +143,17 @@ class _LandingScreenState extends State<LandingScreen>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Image.asset(
-                        'assets/meetspace_logotype.png',
-                        width: 500,
-                        fit: BoxFit.contain,
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Image.asset(
+                          themeNotifier.isDark
+                              ? 'assets/meetspace_logotype_darkmode.png'
+                              : 'assets/meetspace_logotype_lightmode.png',
+                          width: 500,
+                          fit: BoxFit.contain,
+                        ),
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 100),
                       Card(
                         clipBehavior: Clip.antiAlias,
                         child: Column(

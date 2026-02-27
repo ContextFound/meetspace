@@ -58,6 +58,8 @@ flutter:
 
   assets:
     - assets/meetspace_logotype.png
+    - assets/meetspace_logotype_darkmode.png
+    - assets/meetspace_logotype_lightmode.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

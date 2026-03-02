@@ -43,7 +43,7 @@ class EventCreate(BaseModel):
     url: Optional[str] = Field(None, max_length=2000)
     price: Optional[Decimal] = Field(None, ge=0, description="Absent = not specified, 0 = free")
     currency: Optional[str] = Field(None, pattern="^[A-Z]{3}$", description="ISO 4217; required if price present")
-    audience: Audience
+    audience: Audience = Audience.ALL
     event_type: EventType
 
     @model_validator(mode="after")

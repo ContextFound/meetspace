@@ -1,4 +1,4 @@
-"""Initial schema: api_keys and events with PostGIS
+"""Initial schema: api_keys and events
 
 Revision ID: 001
 Revises:
@@ -9,7 +9,6 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-from geoalchemy2 import Geography
 
 # revision identifiers, used by Alembic.
 revision: str = "001"
@@ -19,8 +18,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.execute("CREATE EXTENSION IF NOT EXISTS postgis")
-
     op.create_table(
         "api_keys",
         sa.Column("id", sa.UUID(), nullable=False),
@@ -52,11 +49,8 @@ def upgrade() -> None:
         sa.Column("timezone", sa.String(64), nullable=False),
         sa.Column("location_name", sa.String(200), nullable=False),
         sa.Column("address", sa.String(500), nullable=True),
-        sa.Column(
-            "coordinates",
-            Geography(geometry_type="POINT", srid=4326),
-            nullable=False,
-        ),
+        sa.Column("lat", sa.Double(), nullable=False),
+        sa.Column("lng", sa.Double(), nullable=False),
         sa.Column("url", sa.String(2000), nullable=True),
         sa.Column("price", sa.Numeric(10, 2), nullable=True),
         sa.Column("currency", sa.String(3), nullable=True),
@@ -78,11 +72,12 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("event_id"),
     )
 
-    op.execute("CREATE INDEX idx_events_geo ON events USING GIST (coordinates)")
+    op.create_index("idx_events_lat", "events", ["lat"])
+    op.create_index("idx_events_lng", "events", ["lng"])
 
 
 def downgrade() -> None:
-    op.drop_index("idx_events_geo", table_name="events")
+    op.drop_index("idx_events_lng", table_name="events")
+    op.drop_index("idx_events_lat", table_name="events")
     op.drop_table("events")
     op.drop_table("api_keys")
-    op.execute("DROP EXTENSION IF EXISTS postgis")

@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 import '../api/client.dart';
 import '../models/event.dart';
@@ -27,10 +29,15 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   final _descriptionController = TextEditingController();
   final _locationNameController = TextEditingController();
   final _addressController = TextEditingController();
-  final _latController = TextEditingController(text: '37.7749');
-  final _lngController = TextEditingController(text: '-122.4194');
+  final _latController = TextEditingController();
+  final _lngController = TextEditingController();
   final _urlController = TextEditingController();
   final _priceController = TextEditingController();
+  final _geoSearchController = TextEditingController();
+
+  List<Map<String, dynamic>> _geoResults = [];
+  bool _geoSearching = false;
+  bool _geoThrottled = false;
 
   static const _timezones = {
     'America/New_York': 'Eastern (ET)',
@@ -42,7 +49,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   String _timezone = 'America/New_York';
   DateTime _startAt = DateTime.now().add(const Duration(days: 1));
   DateTime? _endAt;
-  Audience _audience = Audience.adults;
+  Audience _audience = Audience.all;
   EventType _eventType = EventType.meetup;
   String? _currency;
   bool _loading = false;
@@ -87,7 +94,64 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     _lngController.dispose();
     _urlController.dispose();
     _priceController.dispose();
+    _geoSearchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _searchAddress() async {
+    final query = _geoSearchController.text.trim();
+    if (query.isEmpty || _geoThrottled) return;
+
+    setState(() {
+      _geoSearching = true;
+      _geoResults = [];
+      _geoThrottled = true;
+    });
+
+    final throttleTimer = Future.delayed(const Duration(milliseconds: 1500));
+
+    try {
+      final uri = Uri.parse(
+        'https://nominatim.openstreetmap.org/search'
+        '?q=${Uri.encodeComponent(query)}&format=json&limit=5',
+      );
+      final response = await http.get(uri, headers: {
+        'User-Agent': 'MeetSpace/1.0',
+      });
+      if (!mounted) return;
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        setState(() {
+          _geoResults = data.cast<Map<String, dynamic>>();
+        });
+      }
+    } catch (e) {
+      debugPrint('[GeoSearch] Error: $e');
+    } finally {
+      await throttleTimer;
+      if (mounted) {
+        setState(() {
+          _geoSearching = false;
+          _geoThrottled = false;
+        });
+      }
+    }
+  }
+
+  void _selectGeoResult(Map<String, dynamic> result) {
+    setState(() {
+      _latController.text = result['lat'] as String;
+      _lngController.text = result['lon'] as String;
+      final displayName = result['display_name'] as String;
+      if (_locationNameController.text.trim().isEmpty) {
+        final parts = displayName.split(',');
+        _locationNameController.text = parts.first.trim();
+      }
+      if (_addressController.text.trim().isEmpty) {
+        _addressController.text = displayName;
+      }
+      _geoResults = [];
+    });
   }
 
   Future<void> _submit() async {
@@ -321,6 +385,68 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                   border: OutlineInputBorder(),
                 ),
               ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _geoSearchController,
+                      decoration: const InputDecoration(
+                        labelText: 'Search address for coordinates',
+                        hintText: 'e.g. 123 Main St, Chicago IL',
+                        border: OutlineInputBorder(),
+                      ),
+                      onSubmitted: (_) => _searchAddress(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    height: 48,
+                    child: FilledButton.tonalIcon(
+                      onPressed: _geoSearching || _geoThrottled
+                          ? null
+                          : _searchAddress,
+                      icon: _geoSearching
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child:
+                                  CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.search),
+                      label: const Text('Search'),
+                    ),
+                  ),
+                ],
+              ),
+              if (_geoResults.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Card(
+                  margin: EdgeInsets.zero,
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _geoResults.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, i) {
+                      final r = _geoResults[i];
+                      return ListTile(
+                        dense: true,
+                        title: Text(
+                          r['display_name'] as String,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(
+                          '${r['lat']}, ${r['lon']}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        onTap: () => _selectGeoResult(r),
+                      );
+                    },
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               Row(
                 children: [

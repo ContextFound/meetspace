@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../api/client.dart';
-import '../api/config.dart';
 
 String formatApiLogEntry(ApiLogEntry entry) {
   final buf = StringBuffer();
@@ -70,7 +69,7 @@ class _ApiLogDialogState extends State<ApiLogDialog> {
       _healthOk = null;
     });
     try {
-      final ok = await MeetSpaceApiClient(baseUrl: apiBaseUrl).healthCheck();
+      final ok = await MeetSpaceApiClient().healthCheck();
       if (!mounted) return;
       setState(() {
         _healthOk = ok;

@@ -1,10 +1,9 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Optional
 
-from geoalchemy2 import Geography
-from sqlalchemy import DateTime, ForeignKey, Numeric, String, Text, func
+from sqlalchemy import DateTime, Double, ForeignKey, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -27,10 +26,8 @@ class Event(Base):
     timezone: Mapped[str] = mapped_column(String(64), nullable=False)
     location_name: Mapped[str] = mapped_column(String(200), nullable=False)
     address: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    coordinates: Mapped[Any] = mapped_column(
-        Geography(geometry_type="POINT", srid=4326),
-        nullable=False,
-    )
+    lat: Mapped[float] = mapped_column(Double, nullable=False)
+    lng: Mapped[float] = mapped_column(Double, nullable=False)
     url: Mapped[Optional[str]] = mapped_column(String(2000), nullable=True)
     price: Mapped[Optional[Decimal]] = mapped_column(Numeric(precision=10, scale=2), nullable=True)
     currency: Mapped[Optional[str]] = mapped_column(String(3), nullable=True)

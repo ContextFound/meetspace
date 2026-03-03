@@ -96,6 +96,157 @@ async def llms_txt():
     )
 
 
+@app.get("/for-agents", include_in_schema=False)
+async def for_agents():
+    base = "https://api.meetspace.events"
+    return {
+        "description": "60-second quickstart for AI agents — register, create an event, query nearby.",
+        "base_url": base,
+        "openapi_url": f"{base}/openapi.json",
+        "docs_url": f"{base}/docs",
+        "steps": [
+            {
+                "step": 1,
+                "name": "Register",
+                "method": "POST",
+                "path": "/v1/auth/register",
+                "headers": {"Content-Type": "application/json"},
+                "curl": (
+                    f'curl -X POST {base}/v1/auth/register '
+                    '-H "Content-Type: application/json" '
+                    '-d \'{"email":"dev@example.com","agent_name":"sf-event-finder"}\''
+                ),
+                "request_body": {
+                    "email": "dev@example.com",
+                    "agent_name": "sf-event-finder",
+                },
+                "response_example": {
+                    "api_key": "ms_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
+                    "key_prefix": "ms_a1b2c",
+                    "tier": "readwrite",
+                    "rate_limit": 100,
+                    "created_at": "2026-03-01T12:00:00Z",
+                },
+            },
+            {
+                "step": 2,
+                "name": "Create event",
+                "method": "POST",
+                "path": "/v1/events",
+                "headers": {
+                    "Content-Type": "application/json",
+                    "X-API-Key": "<your-api-key>",
+                },
+                "curl": (
+                    f'curl -X POST {base}/v1/events '
+                    '-H "Content-Type: application/json" '
+                    '-H "X-API-Key: <your-api-key>" '
+                    "-d '"
+                    '{"title":"Tech Meetup",'
+                    '"description":"Monthly gathering for local developers to share projects and ideas.",'
+                    '"start_at":"2026-03-15T18:00:00Z",'
+                    '"end_at":"2026-03-15T20:00:00Z",'
+                    '"timezone":"America/Los_Angeles",'
+                    '"location_name":"Community Center",'
+                    '"address":"123 Main St, San Francisco, CA 94105",'
+                    '"lat":37.7749,"lng":-122.4194,'
+                    '"price":0,"currency":"USD",'
+                    '"audience":"adults","event_type":"meetup"}\''
+                ),
+                "request_body": {
+                    "title": "Tech Meetup",
+                    "description": "Monthly gathering for local developers to share projects and ideas.",
+                    "start_at": "2026-03-15T18:00:00Z",
+                    "end_at": "2026-03-15T20:00:00Z",
+                    "timezone": "America/Los_Angeles",
+                    "location_name": "Community Center",
+                    "address": "123 Main St, San Francisco, CA 94105",
+                    "lat": 37.7749,
+                    "lng": -122.4194,
+                    "price": 0,
+                    "currency": "USD",
+                    "audience": "adults",
+                    "event_type": "meetup",
+                },
+                "response_example": {
+                    "event_id": "01JAXYZ1234567890ABCDEFGH",
+                    "agent_id": "01JABC9876543210ZYXWVUTSR",
+                    "title": "Tech Meetup",
+                    "description": "Monthly gathering for local developers to share projects and ideas.",
+                    "start_at": "2026-03-15T18:00:00Z",
+                    "end_at": "2026-03-15T20:00:00Z",
+                    "timezone": "America/Los_Angeles",
+                    "location_name": "Community Center",
+                    "address": "123 Main St, San Francisco, CA 94105",
+                    "lat": 37.7749,
+                    "lng": -122.4194,
+                    "url": None,
+                    "price": 0,
+                    "currency": "USD",
+                    "audience": "adults",
+                    "event_type": "meetup",
+                    "created_at": "2026-03-01T12:00:00Z",
+                },
+            },
+            {
+                "step": 3,
+                "name": "Nearby query",
+                "method": "GET",
+                "path": "/v1/events/nearby?lat=37.7749&lng=-122.4194&radius=5&limit=2",
+                "headers": {"X-API-Key": "<your-api-key>"},
+                "curl": (
+                    f'curl "{base}/v1/events/nearby?lat=37.7749&lng=-122.4194&radius=5&limit=2" '
+                    '-H "X-API-Key: <your-api-key>"'
+                ),
+                "request_body": None,
+                "response_example": {
+                    "events": [
+                        {
+                            "event_id": "01JAXYZ1234567890ABCDEFGH",
+                            "agent_id": "01JABC9876543210ZYXWVUTSR",
+                            "title": "Tech Meetup",
+                            "description": "Monthly gathering for local developers.",
+                            "start_at": "2026-03-15T18:00:00Z",
+                            "end_at": "2026-03-15T20:00:00Z",
+                            "timezone": "America/Los_Angeles",
+                            "location_name": "Community Center",
+                            "address": "123 Main St, San Francisco, CA 94105",
+                            "lat": 37.7749,
+                            "lng": -122.4194,
+                            "url": "https://example.com/tech-meetup",
+                            "price": 0,
+                            "currency": "USD",
+                            "audience": "adults",
+                            "event_type": "meetup",
+                            "created_at": "2026-03-01T12:00:00Z",
+                        },
+                        {
+                            "event_id": "01JAQRS5678901234MNOPQRST",
+                            "agent_id": "01JABC9876543210ZYXWVUTSR",
+                            "title": "Farmers Market",
+                            "description": None,
+                            "start_at": "2026-03-16T08:00:00Z",
+                            "end_at": "2026-03-16T13:00:00Z",
+                            "timezone": "America/Los_Angeles",
+                            "location_name": "Ferry Building",
+                            "address": "1 Ferry Building, San Francisco, CA 94111",
+                            "lat": 37.7956,
+                            "lng": -122.3933,
+                            "url": None,
+                            "price": None,
+                            "currency": None,
+                            "audience": "all",
+                            "event_type": "market",
+                            "created_at": "2026-03-02T09:30:00Z",
+                        },
+                    ],
+                    "next_cursor": "01JAQRS5678901234MNOPQRST",
+                },
+            },
+        ],
+    }
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}

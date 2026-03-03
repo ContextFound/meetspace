@@ -1,12 +1,15 @@
 from typing import Optional
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, HTTPException, status
+from fastapi.security import APIKeyHeader
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.api_key import ApiKey
 from app.schemas.common import ErrorDetail, ErrorResponse
 from app.services.auth_service import get_api_key_by_header, update_last_used
+
+_api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
 def _unauthorized(code: str, message: str) -> HTTPException:
@@ -19,7 +22,7 @@ def _unauthorized(code: str, message: str) -> HTTPException:
 
 
 async def require_api_key(
-    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    x_api_key: Optional[str] = Depends(_api_key_header),
     db: AsyncSession = Depends(get_db),
 ) -> ApiKey:
     if not x_api_key:

@@ -22,3 +22,17 @@ class RegisterResponse(BaseModel):
     tier: str = Field(..., description="read | readwrite | admin")
     rate_limit: int = Field(..., description="Requests per hour")
     created_at: datetime
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "api_key": "ms_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
+                    "key_prefix": "ms_a1b2c",
+                    "tier": "readwrite",
+                    "rate_limit": 100,
+                    "created_at": "2026-03-01T12:00:00Z",
+                }
+            ]
+        }
+    }

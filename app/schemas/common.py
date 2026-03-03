@@ -12,6 +12,20 @@ class ErrorDetail(BaseModel):
 class ErrorResponse(BaseModel):
     error: ErrorDetail
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "start_at: Field required; event_type: Field required",
+                        "status": 422,
+                    }
+                }
+            ]
+        }
+    }
+
 
 class PaginatedResponse(BaseModel):
     next_cursor: Optional[str] = Field(None, description="Cursor for next page; null if no more results")

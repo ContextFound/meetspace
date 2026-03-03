@@ -57,22 +57,23 @@ class EventCreate(BaseModel):
             "examples": [
                 {
                     "title": "Tech Meetup",
-                    "start_at": "2026-03-01T18:00:00Z",
+                    "description": "Monthly gathering for local developers to share projects and ideas.",
+                    "start_at": "2026-03-15T18:00:00Z",
+                    "end_at": "2026-03-15T20:00:00Z",
                     "timezone": "America/Los_Angeles",
                     "location_name": "Community Center",
+                    "address": "123 Main St, San Francisco, CA 94105",
                     "lat": 37.7749,
                     "lng": -122.4194,
+                    "url": "https://example.com/tech-meetup",
+                    "price": 0,
+                    "currency": "USD",
                     "audience": "adults",
                     "event_type": "meetup",
                 }
             ]
         }
     }
-
-
-class EventsNearbyResponse(BaseModel):
-    events: List["EventResponse"]
-    next_cursor: Optional[str] = None
 
 
 class EventResponse(BaseModel):
@@ -94,5 +95,83 @@ class EventResponse(BaseModel):
     event_type: str
     created_at: datetime
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "event_id": "01JAXYZ1234567890ABCDEFGH",
+                    "agent_id": "01JABC9876543210ZYXWVUTSR",
+                    "title": "Tech Meetup",
+                    "description": "Monthly gathering for local developers.",
+                    "start_at": "2026-03-15T18:00:00Z",
+                    "end_at": "2026-03-15T20:00:00Z",
+                    "timezone": "America/Los_Angeles",
+                    "location_name": "Community Center",
+                    "address": "123 Main St, San Francisco, CA 94105",
+                    "lat": 37.7749,
+                    "lng": -122.4194,
+                    "url": "https://example.com/tech-meetup",
+                    "price": 0,
+                    "currency": "USD",
+                    "audience": "adults",
+                    "event_type": "meetup",
+                    "created_at": "2026-03-01T12:00:00Z",
+                }
+            ]
+        }
+    }
 
-EventsNearbyResponse.model_rebuild()
+
+class EventsNearbyResponse(BaseModel):
+    events: List[EventResponse]
+    next_cursor: Optional[str] = None
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "events": [
+                        {
+                            "event_id": "01JAXYZ1234567890ABCDEFGH",
+                            "agent_id": "01JABC9876543210ZYXWVUTSR",
+                            "title": "Tech Meetup",
+                            "description": "Monthly gathering for local developers.",
+                            "start_at": "2026-03-15T18:00:00Z",
+                            "end_at": "2026-03-15T20:00:00Z",
+                            "timezone": "America/Los_Angeles",
+                            "location_name": "Community Center",
+                            "address": "123 Main St, San Francisco, CA 94105",
+                            "lat": 37.7749,
+                            "lng": -122.4194,
+                            "url": "https://example.com/tech-meetup",
+                            "price": 0,
+                            "currency": "USD",
+                            "audience": "adults",
+                            "event_type": "meetup",
+                            "created_at": "2026-03-01T12:00:00Z",
+                        },
+                        {
+                            "event_id": "01JAQRS5678901234MNOPQRST",
+                            "agent_id": "01JABC9876543210ZYXWVUTSR",
+                            "title": "Farmers Market",
+                            "description": None,
+                            "start_at": "2026-03-16T08:00:00Z",
+                            "end_at": "2026-03-16T13:00:00Z",
+                            "timezone": "America/Los_Angeles",
+                            "location_name": "Ferry Building",
+                            "address": "1 Ferry Building, San Francisco, CA 94111",
+                            "lat": 37.7956,
+                            "lng": -122.3933,
+                            "url": None,
+                            "price": None,
+                            "currency": None,
+                            "audience": "all",
+                            "event_type": "market",
+                            "created_at": "2026-03-02T09:30:00Z",
+                        },
+                    ],
+                    "next_cursor": "01JAQRS5678901234MNOPQRST",
+                }
+            ]
+        }
+    }

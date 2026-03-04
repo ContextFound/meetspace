@@ -1,9 +1,8 @@
 import uuid
 from datetime import datetime
-from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import DateTime, Double, ForeignKey, Numeric, String, Text, func
+from sqlalchemy import DateTime, Double, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -29,8 +28,7 @@ class Event(Base):
     lat: Mapped[float] = mapped_column(Double, nullable=False)
     lng: Mapped[float] = mapped_column(Double, nullable=False)
     url: Mapped[Optional[str]] = mapped_column(String(2000), nullable=True)
-    price: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
-    currency: Mapped[Optional[str]] = mapped_column(String(3), nullable=True)
+    cost: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     audience: Mapped[str] = mapped_column(String(32), nullable=False)
     event_type: Mapped[str] = mapped_column(String(32), nullable=False)
     created_at: Mapped[datetime] = mapped_column(

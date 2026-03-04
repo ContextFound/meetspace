@@ -59,9 +59,13 @@ class _EventsListScreenState extends State<EventsListScreen> {
 
   /// Wraps [Geolocator.getCurrentPosition] in a guarded zone so that
   /// interop type errors from geolocator_web (LegacyJavaScriptObject cast
-  /// failure) are caught instead of crashing the app.
+  /// failure) are caught instead of crashing the app. Times out after 5s
+  /// to avoid hanging forever when the browser never resolves.
   Future<Position?> _safeGetCurrentPosition() {
     final completer = Completer<Position?>();
+    final timer = Timer(const Duration(seconds: 5), () {
+      if (!completer.isCompleted) completer.complete(null);
+    });
     runZonedGuarded(() async {
       try {
         final pos = await Geolocator.getCurrentPosition(
@@ -76,7 +80,7 @@ class _EventsListScreenState extends State<EventsListScreen> {
     }, (_, __) {
       if (!completer.isCompleted) completer.complete(null);
     });
-    return completer.future;
+    return completer.future.whenComplete(() => timer.cancel());
   }
 
   Future<void> _getLocationThenLoad() async {

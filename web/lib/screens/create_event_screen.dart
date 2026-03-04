@@ -501,7 +501,12 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                   border: OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
+              Text(
+                'Lat Long Location',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
@@ -563,48 +568,51 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                   ),
                 ),
               ],
-              const SizedBox(height: 24),
-              Text(
-                'Lat Long Location',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _latController,
-                decoration: const InputDecoration(
-                  labelText: 'Latitude *',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                  signed: true,
-                ),
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Required';
-                  final n = double.tryParse(v.trim());
-                  if (n == null) return 'Invalid number';
-                  if (n < -90 || n > 90) return 'Must be -90 to 90';
-                  return null;
-                },
-              ),
               const SizedBox(height: 16),
-              TextFormField(
-                controller: _lngController,
-                decoration: const InputDecoration(
-                  labelText: 'Longitude *',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                  signed: true,
-                ),
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Required';
-                  final n = double.tryParse(v.trim());
-                  if (n == null) return 'Invalid number';
-                  if (n < -180 || n > 180) return 'Must be -180 to 180';
-                  return null;
-                },
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _latController,
+                      decoration: const InputDecoration(
+                        labelText: 'Latitude *',
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                        signed: true,
+                      ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Required';
+                        final n = double.tryParse(v.trim());
+                        if (n == null) return 'Invalid number';
+                        if (n < -90 || n > 90) return 'Must be -90 to 90';
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _lngController,
+                      decoration: const InputDecoration(
+                        labelText: 'Longitude *',
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                        signed: true,
+                      ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Required';
+                        final n = double.tryParse(v.trim());
+                        if (n == null) return 'Invalid number';
+                        if (n < -180 || n > 180) return 'Must be -180 to 180';
+                        return null;
+                      },
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               TextFormField(

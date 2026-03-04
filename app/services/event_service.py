@@ -2,7 +2,7 @@ import math
 from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from ulid import ULID
 
@@ -11,7 +11,7 @@ from app.schemas.event import EventCreate, EventResponse
 
 MILES_TO_METERS = 1609.34
 METERS_PER_DEG_LAT = 111_320.0
-DEFAULT_PAGE_SIZE = 20
+NEARBY_RETURN_LIMIT = 30
 
 
 def _event_to_response(e: Event) -> EventResponse:
@@ -82,33 +82,42 @@ async def get_events_nearby(
     lat: float,
     lng: float,
     radius_miles: Optional[float] = None,
-    cursor: Optional[str] = None,
-    limit: int = DEFAULT_PAGE_SIZE,
-) -> Tuple[List[EventResponse], Optional[str]]:
+    event_types: Optional[List[str]] = None,
+    audiences: Optional[List[str]] = None,
+    starts_after: Optional[datetime] = None,
+    starts_before: Optional[datetime] = None,
+) -> Tuple[List[EventResponse], int, int]:
     now = datetime.now(timezone.utc)
 
-    filters = [Event.start_at >= now]
+    floor = max(now, starts_after) if starts_after else now
+    filters = [Event.start_at >= floor]
+
+    if starts_before is not None:
+        filters.append(Event.start_at < starts_before)
     if radius_miles is not None:
         radius_m = radius_miles * MILES_TO_METERS
         dlat = radius_m / METERS_PER_DEG_LAT
         dlng = radius_m / (METERS_PER_DEG_LAT * math.cos(math.radians(lat)))
         filters.append(Event.lat.between(lat - dlat, lat + dlat))
         filters.append(Event.lng.between(lng - dlng, lng + dlng))
+    if event_types:
+        filters.append(Event.event_type.in_(event_types))
+    if audiences:
+        filters.append(Event.audience.in_(audiences))
+
+    total_result = await db.execute(
+        select(func.count()).select_from(Event).where(*filters)
+    )
+    total = total_result.scalar_one()
 
     stmt = (
         select(Event)
         .where(*filters)
-        .order_by(Event.event_id)
-        .limit(limit + 1)
+        .order_by(Event.start_at.asc())
+        .limit(NEARBY_RETURN_LIMIT)
     )
-    if cursor:
-        stmt = stmt.where(Event.event_id > cursor)
-
     result = await db.execute(stmt)
     rows = result.scalars().all()
-    next_cursor = None
-    if len(rows) > limit:
-        rows = list(rows[:limit])
-        next_cursor = rows[-1].event_id
 
-    return [_event_to_response(e) for e in rows], next_cursor
+    events = [_event_to_response(e) for e in rows]
+    return events, len(events), total

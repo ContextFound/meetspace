@@ -143,7 +143,7 @@ class MeetSpaceApiClient {
   Future<bool> validateKey(String key) async {
     final client = MeetSpaceApiClient(apiKey: key, baseUrl: _baseUrl);
     try {
-      await client.getEventsNearby(0, 0, 1, limit: 1);
+      await client.getEventsNearby(0, 0, 1);
       return true;
     } on ApiException catch (e) {
       if (e.statusCode == 401) return false;
@@ -152,18 +152,35 @@ class MeetSpaceApiClient {
   }
 
   /// List events near (lat, lng) within radius miles. Omit radius for all events.
+  /// Returns up to 30 soonest events ordered by start_at.
   Future<EventsNearbyResponse> getEventsNearby(
     double lat,
     double lng,
     double? radius, {
-    String? cursor,
-    int limit = 20,
+    List<EventType>? eventTypes,
+    List<Audience>? audiences,
+    DateTime? startAfter,
+    DateTime? startBefore,
   }) async {
-    var q = 'lat=$lat&lng=$lng&limit=$limit';
+    var q = 'lat=$lat&lng=$lng';
     if (radius != null) q += '&radius=$radius';
-    final url = cursor != null
-        ? _url('/v1/events/nearby?$q&cursor=${Uri.encodeComponent(cursor)}')
-        : _url('/v1/events/nearby?$q');
+    if (eventTypes != null) {
+      for (final t in eventTypes) {
+        q += '&event_type=${Uri.encodeComponent(t.value)}';
+      }
+    }
+    if (audiences != null) {
+      for (final a in audiences) {
+        q += '&audience=${Uri.encodeComponent(a.value)}';
+      }
+    }
+    if (startAfter != null) {
+      q += '&starts_after=${Uri.encodeComponent(startAfter.toUtc().toIso8601String())}';
+    }
+    if (startBefore != null) {
+      q += '&starts_before=${Uri.encodeComponent(startBefore.toUtc().toIso8601String())}';
+    }
+    final url = _url('/v1/events/nearby?$q');
     final r = await _loggedRequest('GET', url, () {
       return http.get(Uri.parse(url), headers: _headers);
     });

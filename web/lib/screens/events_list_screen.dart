@@ -35,10 +35,10 @@ class _EventsListScreenState extends State<EventsListScreen> {
   double _selectedRadius = 25;
   bool _anyDistance = true;
   List<EventResponse> _events = [];
-  String? _nextCursor;
+  int _count = 0;
+  int _total = 0;
   bool _loading = true;
   String? _error;
-  bool _loadingMore = false;
 
   double? get _effectiveRadius => _anyDistance ? null : _selectedRadius;
 
@@ -90,14 +90,16 @@ class _EventsListScreenState extends State<EventsListScreen> {
       _loading = true;
       _error = null;
       _events = [];
-      _nextCursor = null;
+      _count = 0;
+      _total = 0;
     });
     try {
       final res = await _client.getEventsNearby(_lat, _lng, _effectiveRadius);
       if (!mounted) return;
       setState(() {
         _events = res.events;
-        _nextCursor = res.nextCursor;
+        _count = res.count;
+        _total = res.total;
         _loading = false;
       });
     } on ApiException catch (e) {
@@ -112,28 +114,6 @@ class _EventsListScreenState extends State<EventsListScreen> {
         _error = e.toString();
         _loading = false;
       });
-    }
-  }
-
-  Future<void> _loadMore() async {
-    if (_nextCursor == null || _loadingMore) return;
-    setState(() => _loadingMore = true);
-    try {
-      final res = await _client.getEventsNearby(
-        _lat,
-        _lng,
-        _effectiveRadius,
-        cursor: _nextCursor,
-      );
-      if (!mounted) return;
-      setState(() {
-        _events = [..._events, ...res.events];
-        _nextCursor = res.nextCursor;
-        _loadingMore = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _loadingMore = false);
     }
   }
 
@@ -224,6 +204,16 @@ class _EventsListScreenState extends State<EventsListScreen> {
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ),
+          if (!_loading && _events.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                _total > _count
+                    ? 'Showing $_count of $_total events'
+                    : '$_total events',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
@@ -242,31 +232,8 @@ class _EventsListScreenState extends State<EventsListScreen> {
                             right: 16,
                             bottom: 24,
                           ),
-                          itemCount: _events.length + (_nextCursor != null ? 1 : 0),
+                          itemCount: _events.length,
                           itemBuilder: (context, index) {
-                            if (index == _events.length) {
-                              if (_loadingMore) {
-                                return const Padding(
-                                  padding: EdgeInsets.all(16),
-                                  child: Center(
-                                    child: SizedBox(
-                                      width: 24,
-                                      height: 24,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }
-                              return Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: TextButton(
-                                  onPressed: _loadMore,
-                                  child: const Text('Load more'),
-                                ),
-                              );
-                            }
                             final event = _events[index];
                             return _EventTile(
                               event: event,

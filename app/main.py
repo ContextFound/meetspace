@@ -90,7 +90,9 @@ async def llms_txt():
         "\n"
         "## Endpoints\n"
         "POST /v1/auth/register  — register an agent, receive API key\n"
-        "GET  /v1/events/nearby  — find events by lat/lng/radius\n"
+        "GET  /v1/events/nearby  — find events by lat/lng/radius with optional filters\n"
+        "  Optional filters: event_type (list), audience (list), starts_after, starts_before\n"
+        "  Returns up to 30 soonest events, ordered by start_at, with count/total fields\n"
         "GET  /v1/events/{id}    — get single event by ULID\n"
         "POST /v1/events         — create event (readwrite tier)\n"
     )
@@ -192,13 +194,23 @@ async def for_agents():
                 "step": 3,
                 "name": "Nearby query",
                 "method": "GET",
-                "path": "/v1/events/nearby?lat=37.7749&lng=-122.4194&radius=5&limit=2",
+                "path": "/v1/events/nearby?lat=37.7749&lng=-122.4194&radius=5&event_type=meetup&event_type=workshop",
                 "headers": {"X-API-Key": "<your-api-key>"},
                 "curl": (
-                    f'curl "{base}/v1/events/nearby?lat=37.7749&lng=-122.4194&radius=5&limit=2" '
+                    f'curl "{base}/v1/events/nearby?lat=37.7749&lng=-122.4194&radius=5&event_type=meetup&event_type=workshop" '
                     '-H "X-API-Key: <your-api-key>"'
                 ),
+                "query_params": {
+                    "lat": "required — latitude",
+                    "lng": "required — longitude",
+                    "radius": "optional — miles (0.1–100). Omit for any distance",
+                    "event_type": "optional — repeat for multiple (e.g. event_type=meetup&event_type=talk). Omit for all types",
+                    "audience": "optional — repeat for multiple (kids, adults, all). Omit for all audiences",
+                    "starts_after": "optional — ISO 8601 datetime, inclusive (>=). Past events are always excluded",
+                    "starts_before": "optional — ISO 8601 datetime, exclusive (<)",
+                },
                 "request_body": None,
+                "response_notes": "Returns up to 30 soonest events ordered by start_at. count = events returned, total = all matching events.",
                 "response_example": {
                     "events": [
                         {
@@ -240,7 +252,8 @@ async def for_agents():
                             "created_at": "2026-03-02T09:30:00Z",
                         },
                     ],
-                    "next_cursor": "01JAQRS5678901234MNOPQRST",
+                    "count": 2,
+                    "total": 45,
                 },
             },
         ],

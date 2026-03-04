@@ -1,4 +1,5 @@
-from typing import Optional
+from datetime import datetime
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,7 +8,7 @@ from app.database import get_db
 from app.dependencies.auth import require_api_key, require_tier
 from app.models.api_key import ApiKey
 from app.schemas.common import ErrorDetail, ErrorResponse
-from app.schemas.event import EventCreate, EventResponse, EventsNearbyResponse
+from app.schemas.event import Audience, EventCreate, EventResponse, EventType, EventsNearbyResponse
 from app.services.event_service import create_event, get_event_by_id, get_events_nearby
 
 router = APIRouter()
@@ -20,19 +21,29 @@ RADIUS_MAX = 100.0
     "/nearby",
     response_model=EventsNearbyResponse,
     summary="Find events by location",
-    response_description="Events within the specified radius, excluding past events. Use next_cursor for pagination.",
+    response_description="Up to 30 soonest upcoming events matching the filters. Response includes count/total so callers know if results were capped.",
 )
 async def nearby(
     lat: float = Query(..., ge=-90, le=90, description="Latitude"),
     lng: float = Query(..., ge=-180, le=180, description="Longitude"),
     radius: Optional[float] = Query(None, ge=RADIUS_MIN, le=RADIUS_MAX, description="Radius in miles. Omit for all events."),
-    cursor: Optional[str] = Query(None, description="Pagination cursor"),
-    limit: int = Query(20, ge=1, le=100, description="Page size"),
+    event_type: Optional[List[EventType]] = Query(None, description="Filter by event type(s). Omit for all types."),
+    audience: Optional[List[Audience]] = Query(None, description="Filter by audience(s). Omit for all audiences."),
+    starts_after: Optional[datetime] = Query(None, description="Only events starting at or after this time (inclusive, ISO 8601). Past events are always excluded."),
+    starts_before: Optional[datetime] = Query(None, description="Only events starting before this time (exclusive, ISO 8601)."),
     db: AsyncSession = Depends(get_db),
     api_key: ApiKey = Depends(require_api_key),
 ):
-    events, next_cursor = await get_events_nearby(db, lat, lng, radius, cursor, limit)
-    return EventsNearbyResponse(events=events, next_cursor=next_cursor)
+    event_type_values = [e.value for e in event_type] if event_type else None
+    audience_values = [a.value for a in audience] if audience else None
+    events, count, total = await get_events_nearby(
+        db, lat, lng, radius,
+        event_types=event_type_values,
+        audiences=audience_values,
+        starts_after=starts_after,
+        starts_before=starts_before,
+    )
+    return EventsNearbyResponse(events=events, count=count, total=total)
 
 
 @router.get(

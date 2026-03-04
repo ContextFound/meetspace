@@ -148,16 +148,22 @@ class EventResponse {
 
 class EventsNearbyResponse {
   final List<EventResponse> events;
-  final String? nextCursor;
+  final int count;
+  final int total;
 
-  EventsNearbyResponse({required this.events, this.nextCursor});
+  EventsNearbyResponse({
+    required this.events,
+    required this.count,
+    required this.total,
+  });
 
   factory EventsNearbyResponse.fromJson(Map<String, dynamic> json) {
     return EventsNearbyResponse(
       events: (json['events'] as List<dynamic>)
           .map((e) => EventResponse.fromJson(e as Map<String, dynamic>))
           .toList(),
-      nextCursor: json['next_cursor'] as String?,
+      count: json['count'] as int,
+      total: json['total'] as int,
     );
   }
 }

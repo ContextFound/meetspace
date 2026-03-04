@@ -37,8 +37,7 @@ class EventCreate {
   final double lat;
   final double lng;
   final String? url;
-  final double? price;
-  final String? currency;
+  final String? cost;
   final Audience audience;
   final EventType eventType;
 
@@ -53,8 +52,7 @@ class EventCreate {
     required this.lat,
     required this.lng,
     this.url,
-    this.price,
-    this.currency,
+    this.cost,
     required this.audience,
     required this.eventType,
   });
@@ -74,10 +72,7 @@ class EventCreate {
     if (endAt != null) m['end_at'] = endAt!.toUtc().toIso8601String();
     if (address != null) m['address'] = address;
     if (url != null) m['url'] = url;
-    if (price != null) {
-      m['price'] = price;
-      m['currency'] = currency ?? 'USD';
-    }
+    if (cost != null) m['cost'] = cost;
     return m;
   }
 }
@@ -95,8 +90,7 @@ class EventResponse {
   final double lat;
   final double lng;
   final String? url;
-  final double? price;
-  final String? currency;
+  final String? cost;
   final String audience;
   final String eventType;
   final DateTime createdAt;
@@ -114,8 +108,7 @@ class EventResponse {
     required this.lat,
     required this.lng,
     this.url,
-    this.price,
-    this.currency,
+    this.cost,
     required this.audience,
     required this.eventType,
     required this.createdAt,
@@ -137,12 +130,7 @@ class EventResponse {
       lat: (json['lat'] as num).toDouble(),
       lng: (json['lng'] as num).toDouble(),
       url: json['url'] as String?,
-      price: json['price'] != null
-          ? (json['price'] is num
-              ? (json['price'] as num).toDouble()
-              : double.parse(json['price'] as String))
-          : null,
-      currency: json['currency'] as String?,
+      cost: json['cost'] as String?,
       audience: json['audience'] as String,
       eventType: json['event_type'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),

@@ -152,7 +152,7 @@ async def for_agents():
                     '"location_name":"Community Center",'
                     '"address":"123 Main St, San Francisco, CA 94105",'
                     '"lat":37.7749,"lng":-122.4194,'
-                    '"price":0,"currency":"USD",'
+                    '"cost":"Free",'
                     '"audience":"adults","event_type":"meetup"}\''
                 ),
                 "request_body": {
@@ -165,8 +165,7 @@ async def for_agents():
                     "address": "123 Main St, San Francisco, CA 94105",
                     "lat": 37.7749,
                     "lng": -122.4194,
-                    "price": 0,
-                    "currency": "USD",
+                    "cost": "Free",
                     "audience": "adults",
                     "event_type": "meetup",
                 },
@@ -183,8 +182,7 @@ async def for_agents():
                     "lat": 37.7749,
                     "lng": -122.4194,
                     "url": None,
-                    "price": 0,
-                    "currency": "USD",
+                    "cost": "Free",
                     "audience": "adults",
                     "event_type": "meetup",
                     "created_at": "2026-03-01T12:00:00Z",
@@ -226,8 +224,7 @@ async def for_agents():
                             "lat": 37.7749,
                             "lng": -122.4194,
                             "url": "https://example.com/tech-meetup",
-                            "price": 0,
-                            "currency": "USD",
+                            "cost": "Free",
                             "audience": "adults",
                             "event_type": "meetup",
                             "created_at": "2026-03-01T12:00:00Z",
@@ -245,8 +242,7 @@ async def for_agents():
                             "lat": 37.7956,
                             "lng": -122.3933,
                             "url": None,
-                            "price": None,
-                            "currency": None,
+                            "cost": None,
                             "audience": "all",
                             "event_type": "market",
                             "created_at": "2026-03-02T09:30:00Z",

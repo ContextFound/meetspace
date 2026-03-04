@@ -34,7 +34,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   final _latController = TextEditingController();
   final _lngController = TextEditingController();
   final _urlController = TextEditingController();
-  final _priceController = TextEditingController();
+  final _costController = TextEditingController();
   final _geoSearchController = TextEditingController();
 
   List<Map<String, dynamic>> _geoResults = [];
@@ -49,11 +49,13 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   };
 
   String _timezone = 'America/New_York';
-  DateTime _startAt = DateTime.now().add(const Duration(days: 1));
-  DateTime? _endAt;
+  DateTime _eventDate = DateUtils.dateOnly(
+    DateTime.now().add(const Duration(days: 1)),
+  );
+  TimeOfDay? _startTime;
+  TimeOfDay? _endTime;
   Audience _audience = Audience.all;
   EventType _eventType = EventType.meetup;
-  String? _currency;
   bool _loading = false;
   String? _error;
 
@@ -86,7 +88,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       _latController.text.trim().isNotEmpty ||
       _lngController.text.trim().isNotEmpty ||
       _urlController.text.trim().isNotEmpty ||
-      _priceController.text.trim().isNotEmpty;
+      _costController.text.trim().isNotEmpty;
 
   Future<bool> _confirmDiscardChanges() async {
     if (!_hasUnsavedChanges) return true;
@@ -129,7 +131,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     _latController.dispose();
     _lngController.dispose();
     _urlController.dispose();
-    _priceController.dispose();
+    _costController.dispose();
     _geoSearchController.dispose();
     super.dispose();
   }
@@ -190,6 +192,8 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     });
   }
 
+  static int _toMinutes(TimeOfDay t) => t.hour * 60 + t.minute;
+
   Future<void> _submit() async {
     _error = null;
     if (!_formKey.currentState!.validate()) return;
@@ -199,18 +203,28 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       setState(() => _error = 'Enter valid lat and lng');
       return;
     }
-    double? price;
-    if (_priceController.text.trim().isNotEmpty) {
-      price = double.tryParse(_priceController.text.trim());
-      if (price == null || price < 0) {
-        setState(() => _error = 'Enter a valid price (0 or positive)');
-        return;
-      }
-      if (_currency == null || _currency!.isEmpty) {
-        setState(() => _error = 'Currency is required when price is set');
-        return;
-      }
+    if (_endTime != null &&
+        _startTime != null &&
+        _toMinutes(_endTime!) <= _toMinutes(_startTime!)) {
+      setState(() => _error = 'End time must be after start time');
+      return;
     }
+    final startAt = DateTime(
+      _eventDate.year,
+      _eventDate.month,
+      _eventDate.day,
+      _startTime?.hour ?? 0,
+      _startTime?.minute ?? 0,
+    );
+    final endAt = _endTime != null
+        ? DateTime(
+            _eventDate.year,
+            _eventDate.month,
+            _eventDate.day,
+            _endTime!.hour,
+            _endTime!.minute,
+          )
+        : null;
     setState(() {
       _loading = true;
       _error = null;
@@ -220,8 +234,8 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       description: _descriptionController.text.trim().isEmpty
           ? null
           : _descriptionController.text.trim(),
-      startAt: _startAt,
-      endAt: _endAt,
+      startAt: startAt,
+      endAt: endAt,
       timezone: _timezone,
       locationName: _locationNameController.text.trim(),
       address: _addressController.text.trim().isEmpty
@@ -232,8 +246,9 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       url: _urlController.text.trim().isEmpty
           ? null
           : _urlController.text.trim(),
-      price: price,
-      currency: price != null ? (_currency ?? 'USD') : null,
+      cost: _costController.text.trim().isEmpty
+          ? null
+          : _costController.text.trim(),
       audience: _audience,
       eventType: _eventType,
     );
@@ -329,76 +344,129 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 maxLines: 3,
               ),
               const SizedBox(height: 16),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  'Start: ${_startAt.toIso8601String().substring(0, 16)}',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                trailing: TextButton(
-                  onPressed: () async {
-                    final date = await showDatePicker(
-                      context: context,
-                      initialDate: _startAt,
-                      firstDate: DateTime.now(),
-                      lastDate: DateTime.now().add(const Duration(days: 730)),
-                    );
-                    if (date == null || !context.mounted) return;
-                    final time = await showTimePicker(
-                      context: context,
-                      initialTime: TimeOfDay.fromDateTime(_startAt),
-                    );
-                    if (time == null || !context.mounted) return;
-                    setState(() {
-                      _startAt = DateTime(
-                        date.year,
-                        date.month,
-                        date.day,
-                        time.hour,
-                        time.minute,
-                      );
-                    });
-                  },
-                  child: const Text('Pick'),
+              InkWell(
+                borderRadius: BorderRadius.circular(4),
+                onTap: () async {
+                  final date = await showDatePicker(
+                    context: context,
+                    initialDate: _eventDate,
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 730)),
+                  );
+                  if (date == null || !context.mounted) return;
+                  setState(() => _eventDate = DateUtils.dateOnly(date));
+                },
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Date *',
+                    border: OutlineInputBorder(),
+                    suffixIcon: Icon(Icons.calendar_today),
+                  ),
+                  child: Text(
+                    MaterialLocalizations.of(context).formatMediumDate(_eventDate),
+                  ),
                 ),
               ),
-              const SizedBox(height: 8),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  _endAt == null
-                      ? 'End: (optional)'
-                      : 'End: ${_endAt!.toIso8601String().substring(0, 16)}',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                trailing: TextButton(
-                  onPressed: () async {
-                    final date = await showDatePicker(
-                      context: context,
-                      initialDate: _endAt ?? _startAt,
-                      firstDate: _startAt,
-                      lastDate: DateTime.now().add(const Duration(days: 730)),
-                    );
-                    if (date == null || !context.mounted) return;
-                    final time = await showTimePicker(
-                      context: context,
-                      initialTime: _endAt != null
-                          ? TimeOfDay.fromDateTime(_endAt!)
-                          : TimeOfDay.fromDateTime(_startAt),
-                    );
-                    if (time == null || !context.mounted) return;
-                    setState(() {
-                      _endAt = DateTime(
-                        date.year,
-                        date.month,
-                        date.day,
-                        time.hour,
-                        time.minute,
-                      );
-                    });
-                  },
-                  child: Text(_endAt == null ? 'Set' : 'Change'),
-                ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(4),
+                      onTap: () async {
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: _startTime ??
+                              const TimeOfDay(hour: 9, minute: 0),
+                        );
+                        if (time == null || !context.mounted) return;
+                        setState(() {
+                          _startTime = time;
+                          if (_endTime != null &&
+                              _toMinutes(_endTime!) <=
+                                  _toMinutes(_startTime!)) {
+                            _endTime = null;
+                          }
+                        });
+                      },
+                      child: InputDecorator(
+                        decoration: InputDecoration(
+                          labelText: 'Start time',
+                          border: const OutlineInputBorder(),
+                          suffixIcon: _startTime != null
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 18),
+                                  onPressed: () =>
+                                      setState(() => _startTime = null),
+                                  tooltip: 'Clear',
+                                )
+                              : const Icon(Icons.access_time),
+                        ),
+                        child: Text(
+                          _startTime != null
+                              ? _startTime!.format(context)
+                              : 'Optional',
+                          style: _startTime == null
+                              ? Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: Theme.of(context).hintColor,
+                                  )
+                              : null,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(4),
+                      onTap: () async {
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: _endTime ??
+                              _startTime ??
+                              const TimeOfDay(hour: 17, minute: 0),
+                        );
+                        if (time == null || !context.mounted) return;
+                        if (_startTime != null &&
+                            _toMinutes(time) <=
+                                _toMinutes(_startTime!)) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content:
+                                  Text('End time must be after start time'),
+                            ),
+                          );
+                          return;
+                        }
+                        setState(() => _endTime = time);
+                      },
+                      child: InputDecorator(
+                        decoration: InputDecoration(
+                          labelText: 'End time',
+                          border: const OutlineInputBorder(),
+                          suffixIcon: _endTime != null
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 18),
+                                  onPressed: () =>
+                                      setState(() => _endTime = null),
+                                  tooltip: 'Clear',
+                                )
+                              : const Icon(Icons.access_time),
+                        ),
+                        child: Text(
+                          _endTime != null
+                              ? _endTime!.format(context)
+                              : 'Optional',
+                          style: _endTime == null
+                              ? Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: Theme.of(context).hintColor,
+                                  )
+                              : null,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
@@ -495,88 +563,78 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                   ),
                 ),
               ],
+              const SizedBox(height: 24),
+              Text(
+                'Lat Long Location',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _latController,
+                decoration: const InputDecoration(
+                  labelText: 'Latitude *',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                  signed: true,
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Required';
+                  final n = double.tryParse(v.trim());
+                  if (n == null) return 'Invalid number';
+                  if (n < -90 || n > 90) return 'Must be -90 to 90';
+                  return null;
+                },
+              ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _latController,
-                      decoration: const InputDecoration(
-                        labelText: 'Lat *',
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                        signed: true,
-                      ),
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) return 'Required';
-                        if (double.tryParse(v.trim()) == null) return 'Invalid number';
-                        return null;
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _lngController,
-                      decoration: const InputDecoration(
-                        labelText: 'Lng *',
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                        signed: true,
-                      ),
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) return 'Required';
-                        if (double.tryParse(v.trim()) == null) return 'Invalid number';
-                        return null;
-                      },
-                    ),
-                  ),
-                ],
+              TextFormField(
+                controller: _lngController,
+                decoration: const InputDecoration(
+                  labelText: 'Longitude *',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                  signed: true,
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Required';
+                  final n = double.tryParse(v.trim());
+                  if (n == null) return 'Invalid number';
+                  if (n < -180 || n > 180) return 'Must be -180 to 180';
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _urlController,
                 decoration: const InputDecoration(
-                  labelText: 'URL (optional)',
+                  labelText: 'Additional Details URL (optional)',
+                  hintText: 'https://',
                   border: OutlineInputBorder(),
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _priceController,
-                decoration: const InputDecoration(
-                  labelText: 'Price (optional, 0 = free)',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                  signed: false,
-                ),
+                keyboardType: TextInputType.url,
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return null;
-                  final n = double.tryParse(v.trim());
-                  if (n == null) return 'Invalid number';
-                  if (n < 0) return 'Must be 0 or positive';
+                  final uri = Uri.tryParse(v.trim());
+                  if (uri == null || !uri.hasScheme || !uri.hasAuthority) {
+                    return 'Enter a valid URL';
+                  }
+                  if (uri.scheme != 'http' && uri.scheme != 'https') {
+                    return 'URL must start with http:// or https://';
+                  }
                   return null;
                 },
               ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                value: _currency,
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _costController,
                 decoration: const InputDecoration(
-                  labelText: 'Currency (if price set)',
+                  labelText: 'Cost (optional)',
+                  hintText: 'e.g. Free, \$10, Donation-based',
                   border: OutlineInputBorder(),
                 ),
-                items: const [
-                  DropdownMenuItem(value: 'USD', child: Text('USD')),
-                  DropdownMenuItem(value: 'EUR', child: Text('EUR')),
-                  DropdownMenuItem(value: 'GBP', child: Text('GBP')),
-                ],
-                onChanged: (v) => setState(() => _currency = v),
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<Audience>(

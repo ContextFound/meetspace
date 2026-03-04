@@ -1,9 +1,10 @@
 from datetime import datetime
-from decimal import Decimal
 from enum import Enum
 from typing import List, Optional
+from urllib.parse import urlparse
+from zoneinfo import ZoneInfo
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class Audience(str, Enum):
@@ -41,15 +42,37 @@ class EventCreate(BaseModel):
     lat: float = Field(..., ge=-90, le=90)
     lng: float = Field(..., ge=-180, le=180)
     url: Optional[str] = Field(None, max_length=2000)
-    price: Optional[Decimal] = Field(None, ge=0, description="Absent = not specified, 0 = free")
-    currency: Optional[str] = Field(None, pattern="^[A-Z]{3}$", description="ISO 4217; required if price present")
+    cost: Optional[str] = Field(None, max_length=200, description="Free-text cost, e.g. '$10', 'Free', 'Donation-based'")
     audience: Audience = Audience.ALL
     event_type: EventType
 
+    @field_validator("url")
+    @classmethod
+    def url_must_be_http(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        parsed = urlparse(v)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            raise ValueError("url must be a valid HTTP or HTTPS URL")
+        return v
+
     @model_validator(mode="after")
-    def price_requires_currency(self):
-        if self.price is not None and self.currency is None:
-            raise ValueError("currency is required when price is present")
+    def _cross_field_checks(self):
+        if self.end_at is not None:
+            if self.end_at <= self.start_at:
+                raise ValueError("end_at must be after start_at")
+            try:
+                tz = ZoneInfo(self.timezone)
+                start_local = self.start_at.astimezone(tz).date()
+                end_local = self.end_at.astimezone(tz).date()
+                if start_local != end_local:
+                    raise ValueError(
+                        "events cannot span multiple days: "
+                        "end_at must be on the same date as start_at "
+                        f"in {self.timezone}"
+                    )
+            except KeyError:
+                pass
         return self
 
     model_config = {
@@ -66,8 +89,7 @@ class EventCreate(BaseModel):
                     "lat": 37.7749,
                     "lng": -122.4194,
                     "url": "https://example.com/tech-meetup",
-                    "price": 0,
-                    "currency": "USD",
+                    "cost": "Free",
                     "audience": "adults",
                     "event_type": "meetup",
                 }
@@ -89,8 +111,7 @@ class EventResponse(BaseModel):
     lat: float
     lng: float
     url: Optional[str] = None
-    price: Optional[Decimal] = None
-    currency: Optional[str] = None
+    cost: Optional[str] = None
     audience: str
     event_type: str
     created_at: datetime
@@ -111,8 +132,7 @@ class EventResponse(BaseModel):
                     "lat": 37.7749,
                     "lng": -122.4194,
                     "url": "https://example.com/tech-meetup",
-                    "price": 0,
-                    "currency": "USD",
+                    "cost": "Free",
                     "audience": "adults",
                     "event_type": "meetup",
                     "created_at": "2026-03-01T12:00:00Z",
@@ -145,8 +165,7 @@ class EventsNearbyResponse(BaseModel):
                             "lat": 37.7749,
                             "lng": -122.4194,
                             "url": "https://example.com/tech-meetup",
-                            "price": 0,
-                            "currency": "USD",
+                            "cost": "Free",
                             "audience": "adults",
                             "event_type": "meetup",
                             "created_at": "2026-03-01T12:00:00Z",
@@ -164,8 +183,7 @@ class EventsNearbyResponse(BaseModel):
                             "lat": 37.7956,
                             "lng": -122.3933,
                             "url": None,
-                            "price": None,
-                            "currency": None,
+                            "cost": None,
                             "audience": "all",
                             "event_type": "market",
                             "created_at": "2026-03-02T09:30:00Z",

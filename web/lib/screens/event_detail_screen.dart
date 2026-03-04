@@ -90,12 +90,10 @@ class _EventDetailContent extends StatelessWidget {
           '${event.audience} · ${event.eventType}',
           style: Theme.of(context).textTheme.bodySmall,
         ),
-        if (event.price != null) ...[
+        if (event.cost != null && event.cost!.isNotEmpty) ...[
           const SizedBox(height: 8),
           Text(
-            event.currency != null
-                ? '${event.price} ${event.currency}'
-                : '${event.price}',
+            event.cost!,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
         ],

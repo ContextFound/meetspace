@@ -29,7 +29,7 @@ class Event(Base):
     lat: Mapped[float] = mapped_column(Double, nullable=False)
     lng: Mapped[float] = mapped_column(Double, nullable=False)
     url: Mapped[Optional[str]] = mapped_column(String(2000), nullable=True)
-    price: Mapped[Optional[Decimal]] = mapped_column(Numeric(precision=10, scale=2), nullable=True)
+    price: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
     currency: Mapped[Optional[str]] = mapped_column(String(3), nullable=True)
     audience: Mapped[str] = mapped_column(String(32), nullable=False)
     event_type: Mapped[str] = mapped_column(String(32), nullable=False)

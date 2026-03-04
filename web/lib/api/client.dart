@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/auth.dart';
@@ -100,10 +101,13 @@ class MeetSpaceApiClient {
     Future<http.Response> Function() action, {
     String? requestBody,
   }) async {
+    debugPrint('[API] --> $method $url');
+    if (requestBody != null) debugPrint('[API]     body: $requestBody');
     final stopwatch = Stopwatch()..start();
     try {
       final r = await action();
       stopwatch.stop();
+      debugPrint('[API] <-- ${r.statusCode} $method $url (${stopwatch.elapsedMilliseconds}ms)');
       ApiLog.instance.add(ApiLogEntry(
         method: method,
         url: url,
@@ -116,6 +120,7 @@ class MeetSpaceApiClient {
       return r;
     } catch (e) {
       stopwatch.stop();
+      debugPrint('[API] <-- ERROR $method $url (${stopwatch.elapsedMilliseconds}ms): $e');
       ApiLog.instance.add(ApiLogEntry(
         method: method,
         url: url,

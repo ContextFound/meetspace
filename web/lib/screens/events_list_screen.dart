@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -5,6 +7,8 @@ import '../api/client.dart';
 import '../models/event.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/api_log_dialog.dart';
+import '../widgets/logotype_header.dart';
 import 'create_event_screen.dart';
 import 'event_detail_screen.dart';
 
@@ -40,6 +44,10 @@ class _EventsListScreenState extends State<EventsListScreen> {
   bool _loading = true;
   String? _error;
 
+  /// Incremented each time the user manually triggers a load (e.g. filter
+  /// change) so a stale geolocation callback doesn't fire a duplicate load.
+  int _loadGeneration = 0;
+
   double? get _effectiveRadius => _anyDistance ? null : _selectedRadius;
 
   @override
@@ -49,39 +57,58 @@ class _EventsListScreenState extends State<EventsListScreen> {
     _getLocationThenLoad();
   }
 
-  Future<void> _getLocationThenLoad() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      _loadEvents();
-      return;
-    }
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-    if (permission == LocationPermission.whileInUse ||
-        permission == LocationPermission.always) {
+  /// Wraps [Geolocator.getCurrentPosition] in a guarded zone so that
+  /// interop type errors from geolocator_web (LegacyJavaScriptObject cast
+  /// failure) are caught instead of crashing the app.
+  Future<Position?> _safeGetCurrentPosition() {
+    final completer = Completer<Position?>();
+    runZonedGuarded(() async {
       try {
         final pos = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(
             accuracy: LocationAccuracy.medium,
           ),
         );
-        if (mounted) {
-          setState(() {
-            _lat = pos.latitude;
-            _lng = pos.longitude;
-          });
-        }
+        if (!completer.isCompleted) completer.complete(pos);
       } catch (_) {
-        // keep defaults
+        if (!completer.isCompleted) completer.complete(null);
       }
+    }, (_, __) {
+      if (!completer.isCompleted) completer.complete(null);
+    });
+    return completer.future;
+  }
+
+  Future<void> _getLocationThenLoad() async {
+    final gen = ++_loadGeneration;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (serviceEnabled) {
+        var permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+        }
+        if (permission == LocationPermission.whileInUse ||
+            permission == LocationPermission.always) {
+          final pos = await _safeGetCurrentPosition();
+          if (pos != null && mounted) {
+            setState(() {
+              _lat = pos.latitude;
+              _lng = pos.longitude;
+            });
+          }
+        }
+      }
+    } catch (_) {
+      // Geolocation unavailable – fall back to defaults.
     }
-    _loadEvents();
+    if (gen == _loadGeneration) {
+      _loadEvents();
+    }
   }
 
   Future<void> _loadEvents() async {
@@ -118,6 +145,7 @@ class _EventsListScreenState extends State<EventsListScreen> {
   }
 
   void _onRadiusChanged(double value) {
+    _loadGeneration++;
     setState(() {
       _selectedRadius = value;
       _anyDistance = false;
@@ -126,6 +154,7 @@ class _EventsListScreenState extends State<EventsListScreen> {
   }
 
   void _onAnyDistance() {
+    _loadGeneration++;
     setState(() => _anyDistance = true);
     _loadEvents();
   }
@@ -134,8 +163,15 @@ class _EventsListScreenState extends State<EventsListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('meetspace'),
+        leadingWidth: 160,
+        leading: const LogotypeHeader(),
+        title: const Text('Events'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.bug_report_outlined),
+            tooltip: 'API call log',
+            onPressed: () => showApiLogDialog(context),
+          ),
           IconButton(
             icon: Icon(
               themeNotifier.isDark ? Icons.light_mode : Icons.dark_mode,

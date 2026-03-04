@@ -6,8 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../api/client.dart';
+import '../constants.dart';
 import '../models/event.dart';
 import '../widgets/api_log_dialog.dart';
+import '../widgets/logotype_header.dart';
 
 class CreateEventScreen extends StatefulWidget {
   const CreateEventScreen({
@@ -75,6 +77,40 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       _locationNameController.text.trim().isNotEmpty &&
       _latController.text.trim().isNotEmpty &&
       _lngController.text.trim().isNotEmpty;
+
+  bool get _hasUnsavedChanges =>
+      _titleController.text.trim().isNotEmpty ||
+      _descriptionController.text.trim().isNotEmpty ||
+      _locationNameController.text.trim().isNotEmpty ||
+      _addressController.text.trim().isNotEmpty ||
+      _latController.text.trim().isNotEmpty ||
+      _lngController.text.trim().isNotEmpty ||
+      _urlController.text.trim().isNotEmpty ||
+      _priceController.text.trim().isNotEmpty;
+
+  Future<bool> _confirmDiscardChanges() async {
+    if (!_hasUnsavedChanges) return true;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Discard changes?'),
+        content: const Text(
+          'You have unsaved changes. Are you sure you want to leave?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
 
   @override
   void dispose() {
@@ -237,9 +273,18 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final shouldPop = await _confirmDiscardChanges();
+        if (shouldPop && context.mounted) Navigator.of(context).pop();
+      },
+      child: Scaffold(
       appBar: AppBar(
-        title: const Text('Create event'),
+        leadingWidth: 160,
+        leading: LogotypeHeader(onTap: _confirmDiscardChanges),
+        title: const Text('Create New Event'),
         actions: [
           IconButton(
             icon: const Icon(Icons.bug_report_outlined),
@@ -249,12 +294,15 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+          padding: const EdgeInsets.all(24),
+          child: Center(
+            child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: kFormMaxWidth),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
               if (_error != null) ...[
                 Text(
                   _error!,
@@ -508,6 +556,13 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                   decimal: true,
                   signed: false,
                 ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return null;
+                  final n = double.tryParse(v.trim());
+                  if (n == null) return 'Invalid number';
+                  if (n < 0) return 'Must be 0 or positive';
+                  return null;
+                },
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
@@ -564,8 +619,11 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                       )
                     : const Text('Create event'),
               ),
-            ],
+              ],
+              ),
+            ),
           ),
+        ),
         ),
       ),
     );

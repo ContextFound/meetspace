@@ -137,7 +137,11 @@ class EventResponse {
       lat: (json['lat'] as num).toDouble(),
       lng: (json['lng'] as num).toDouble(),
       url: json['url'] as String?,
-      price: json['price'] != null ? (json['price'] as num).toDouble() : null,
+      price: json['price'] != null
+          ? (json['price'] is num
+              ? (json['price'] as num).toDouble()
+              : double.parse(json['price'] as String))
+          : null,
       currency: json['currency'] as String?,
       audience: json['audience'] as String,
       eventType: json['event_type'] as String,

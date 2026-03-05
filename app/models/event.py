@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, Double, ForeignKey, String, Text, func
+from sqlalchemy import DateTime, Double, ForeignKey, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -36,6 +36,10 @@ class Event(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        UniqueConstraint("agent_id", "title", "start_at", "lat", "lng", name="uq_event_natural_key"),
     )
 
     api_key = relationship("ApiKey", back_populates="events")

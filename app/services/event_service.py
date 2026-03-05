@@ -2,7 +2,8 @@ import math
 from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from ulid import ULID
 
@@ -64,7 +65,22 @@ async def create_event(
         updated_at=now,
     )
     db.add(event)
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        existing = await db.execute(
+            select(Event).where(
+                and_(
+                    Event.agent_id == api_key_id,
+                    Event.title == req.title,
+                    Event.start_at == req.start_at,
+                    Event.lat == req.lat,
+                    Event.lng == req.lng,
+                )
+            )
+        )
+        return _event_to_response(existing.scalar_one())
     await db.refresh(event)
     return _event_to_response(event)
 

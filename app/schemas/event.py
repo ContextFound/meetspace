@@ -98,6 +98,65 @@ class EventCreate(BaseModel):
     }
 
 
+class EventUpdate(BaseModel):
+    """Partial update — only fields present in the request body are changed.
+    Send null for nullable fields (description, end_at, address, url, cost) to
+    clear them.  Non-nullable fields reject null."""
+
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=10000)
+    start_at: Optional[datetime] = None
+    end_at: Optional[datetime] = None
+    timezone: Optional[str] = None
+    location_name: Optional[str] = Field(None, min_length=1, max_length=200)
+    address: Optional[str] = Field(None, max_length=500)
+    lat: Optional[float] = Field(None, ge=-90, le=90)
+    lng: Optional[float] = Field(None, ge=-180, le=180)
+    url: Optional[str] = Field(None, max_length=2000)
+    cost: Optional[str] = Field(None, max_length=200, description="Free-text cost, e.g. '$10', 'Free', 'Donation-based'")
+    audience: Optional[Audience] = None
+    event_type: Optional[EventType] = None
+
+    @field_validator("url")
+    @classmethod
+    def url_must_be_http(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        parsed = urlparse(v)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            raise ValueError("url must be a valid HTTP or HTTPS URL")
+        return v
+
+    @model_validator(mode="after")
+    def _checks(self):
+        non_nullable = {"title", "start_at", "timezone", "location_name", "lat", "lng", "audience", "event_type"}
+        for field in non_nullable:
+            if field in self.model_fields_set and getattr(self, field) is None:
+                raise ValueError(f"{field} cannot be null")
+
+        if (
+            "end_at" in self.model_fields_set
+            and "start_at" in self.model_fields_set
+            and self.end_at is not None
+            and self.start_at is not None
+        ):
+            if self.end_at <= self.start_at:
+                raise ValueError("end_at must be after start_at")
+            tz_str = self.timezone
+            if tz_str:
+                try:
+                    tz = ZoneInfo(tz_str)
+                    if self.start_at.astimezone(tz).date() != self.end_at.astimezone(tz).date():
+                        raise ValueError(
+                            "events cannot span multiple days: "
+                            "end_at must be on the same date as start_at "
+                            f"in {tz_str}"
+                        )
+                except KeyError:
+                    pass
+        return self
+
+
 class EventResponse(BaseModel):
     event_id: str
     agent_id: str

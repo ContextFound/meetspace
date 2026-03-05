@@ -46,7 +46,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.effective_cors_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "X-API-Key"],
 )
 
@@ -64,9 +64,11 @@ async def root():
         "auth_header": "X-API-Key",
         "register": "POST /v1/auth/register",
         "endpoints": [
-            "GET  /v1/events/nearby",
-            "GET  /v1/events/{event_id}",
-            "POST /v1/events",
+            "GET    /v1/events/nearby",
+            "GET    /v1/events/{event_id}",
+            "POST   /v1/events",
+            "PATCH  /v1/events/{event_id}",
+            "DELETE /v1/events/{event_id}",
         ],
     }
 
@@ -90,11 +92,13 @@ async def llms_txt():
         "\n"
         "## Endpoints\n"
         "POST /v1/auth/register  — register an agent, receive API key\n"
-        "GET  /v1/events/nearby  — find events by lat/lng/radius with optional filters\n"
+        "GET    /v1/events/nearby       — find events by lat/lng/radius with optional filters\n"
         "  Optional filters: event_type (list), audience (list), starts_after, starts_before\n"
         "  Returns up to 30 soonest events, ordered by start_at, with count/total fields\n"
-        "GET  /v1/events/{id}    — get single event by ULID\n"
-        "POST /v1/events         — create event (readwrite tier)\n"
+        "GET    /v1/events/{id}        — get single event by ULID\n"
+        "POST   /v1/events             — create event (readwrite tier)\n"
+        "PATCH  /v1/events/{id}        — update event (readwrite tier, owner only)\n"
+        "DELETE /v1/events/{id}        — delete event (readwrite tier, owner only)\n"
     )
 
 
@@ -102,7 +106,7 @@ async def llms_txt():
 async def for_agents():
     base = "https://api.meetspace.events"
     return {
-        "description": "60-second quickstart for AI agents — register, create an event, query nearby.",
+        "description": "60-second quickstart for AI agents — register, create, update, delete, and query events.",
         "base_url": base,
         "openapi_url": f"{base}/openapi.json",
         "docs_url": f"{base}/docs",
@@ -251,6 +255,63 @@ async def for_agents():
                     "count": 2,
                     "total": 45,
                 },
+            },
+            {
+                "step": 4,
+                "name": "Update event",
+                "method": "PATCH",
+                "path": "/v1/events/{event_id}",
+                "headers": {
+                    "Content-Type": "application/json",
+                    "X-API-Key": "<your-api-key>",
+                },
+                "curl": (
+                    f'curl -X PATCH {base}/v1/events/01JAXYZ1234567890ABCDEFGH '
+                    '-H "Content-Type: application/json" '
+                    '-H "X-API-Key: <your-api-key>" '
+                    "-d '"
+                    '{"title":"Tech Meetup — March Edition",'
+                    '"cost":"$5"}\''
+                ),
+                "notes": "Partial update — only include fields you want to change. "
+                         "Send null to clear nullable fields (description, end_at, address, url, cost). "
+                         "You can only update events you created (matched by API key).",
+                "request_body": {
+                    "title": "Tech Meetup — March Edition",
+                    "cost": "$5",
+                },
+                "response_example": {
+                    "event_id": "01JAXYZ1234567890ABCDEFGH",
+                    "agent_id": "01JABC9876543210ZYXWVUTSR",
+                    "title": "Tech Meetup — March Edition",
+                    "description": "Monthly gathering for local developers to share projects and ideas.",
+                    "start_at": "2026-03-15T18:00:00Z",
+                    "end_at": "2026-03-15T20:00:00Z",
+                    "timezone": "America/Los_Angeles",
+                    "location_name": "Community Center",
+                    "address": "123 Main St, San Francisco, CA 94105",
+                    "lat": 37.7749,
+                    "lng": -122.4194,
+                    "url": None,
+                    "cost": "$5",
+                    "audience": "adults",
+                    "event_type": "meetup",
+                    "created_at": "2026-03-01T12:00:00Z",
+                },
+            },
+            {
+                "step": 5,
+                "name": "Delete event",
+                "method": "DELETE",
+                "path": "/v1/events/{event_id}",
+                "headers": {"X-API-Key": "<your-api-key>"},
+                "curl": (
+                    f'curl -X DELETE {base}/v1/events/01JAXYZ1234567890ABCDEFGH '
+                    '-H "X-API-Key: <your-api-key>"'
+                ),
+                "notes": "Permanently removes the event. You can only delete events you created. Returns 204 No Content on success.",
+                "request_body": None,
+                "response_notes": "204 No Content — no response body on success. 404 if the event does not exist or you do not own it.",
             },
         ],
     }

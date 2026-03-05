@@ -6,8 +6,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from ulid import ULID
 
+from zoneinfo import ZoneInfo
+
 from app.models.event import Event
-from app.schemas.event import EventCreate, EventResponse
+from app.schemas.event import EventCreate, EventResponse, EventUpdate
 
 MILES_TO_METERS = 1609.34
 METERS_PER_DEG_LAT = 111_320.0
@@ -73,6 +75,61 @@ async def get_event_by_id(db: AsyncSession, event_id: str) -> Optional[EventResp
     if event is None:
         return None
     return _event_to_response(event)
+
+
+async def update_event(
+    db: AsyncSession,
+    event_id: str,
+    api_key_id,
+    req: EventUpdate,
+    *,
+    is_admin: bool = False,
+) -> Optional[EventResponse]:
+    result = await db.execute(select(Event).where(Event.event_id == event_id))
+    event = result.scalar_one_or_none()
+    if event is None or (not is_admin and event.agent_id != api_key_id):
+        return None
+
+    for field in req.model_fields_set:
+        value = getattr(req, field)
+        if field in ("audience", "event_type") and value is not None:
+            value = value.value
+        setattr(event, field, value)
+
+    if event.end_at is not None:
+        if event.end_at <= event.start_at:
+            raise ValueError("end_at must be after start_at")
+        try:
+            tz = ZoneInfo(event.timezone)
+            if event.start_at.astimezone(tz).date() != event.end_at.astimezone(tz).date():
+                raise ValueError(
+                    "events cannot span multiple days: "
+                    "end_at must be on the same date as start_at "
+                    f"in {event.timezone}"
+                )
+        except KeyError:
+            pass
+
+    event.updated_at = datetime.now(timezone.utc)
+    await db.flush()
+    await db.refresh(event)
+    return _event_to_response(event)
+
+
+async def delete_event(
+    db: AsyncSession,
+    event_id: str,
+    api_key_id,
+    *,
+    is_admin: bool = False,
+) -> bool:
+    result = await db.execute(select(Event).where(Event.event_id == event_id))
+    event = result.scalar_one_or_none()
+    if event is None or (not is_admin and event.agent_id != api_key_id):
+        return False
+    await db.delete(event)
+    await db.flush()
+    return True
 
 
 async def get_events_nearby(

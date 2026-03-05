@@ -8,8 +8,8 @@ from app.database import get_db
 from app.dependencies.auth import require_api_key, require_tier
 from app.models.api_key import ApiKey
 from app.schemas.common import ErrorDetail, ErrorResponse
-from app.schemas.event import Audience, EventCreate, EventResponse, EventType, EventsNearbyResponse
-from app.services.event_service import create_event, get_event_by_id, get_events_nearby
+from app.schemas.event import Audience, EventCreate, EventResponse, EventType, EventsNearbyResponse, EventUpdate
+from app.services.event_service import create_event, delete_event, get_event_by_id, get_events_nearby, update_event
 
 router = APIRouter()
 
@@ -84,3 +84,66 @@ async def create(
     api_key: ApiKey = Depends(require_tier("readwrite")),
 ):
     return await create_event(db, api_key.id, req)
+
+
+def _not_found(event_id: str) -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=ErrorResponse(
+            error=ErrorDetail(
+                code="NOT_FOUND",
+                message=f"Event {event_id} not found",
+                status=404,
+            )
+        ).model_dump(),
+    )
+
+
+@router.patch(
+    "/{event_id}",
+    response_model=EventResponse,
+    summary="Update event",
+    response_description="Updated event. Requires readwrite tier and ownership.",
+)
+async def update(
+    event_id: str,
+    req: EventUpdate,
+    db: AsyncSession = Depends(get_db),
+    api_key: ApiKey = Depends(require_tier("readwrite", "admin")),
+):
+    try:
+        result = await update_event(
+            db, event_id, api_key.id, req, is_admin=api_key.tier == "admin"
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=ErrorResponse(
+                error=ErrorDetail(
+                    code="VALIDATION_ERROR",
+                    message=str(e),
+                    status=422,
+                )
+            ).model_dump(),
+        )
+    if result is None:
+        raise _not_found(event_id)
+    return result
+
+
+@router.delete(
+    "/{event_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete event",
+    response_description="Event deleted. Requires readwrite tier and ownership.",
+)
+async def delete(
+    event_id: str,
+    db: AsyncSession = Depends(get_db),
+    api_key: ApiKey = Depends(require_tier("readwrite", "admin")),
+):
+    deleted = await delete_event(
+        db, event_id, api_key.id, is_admin=api_key.tier == "admin"
+    )
+    if not deleted:
+        raise _not_found(event_id)

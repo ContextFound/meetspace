@@ -9,7 +9,7 @@ from app.models.api_key import ApiKey
 from app.schemas.common import ErrorDetail, ErrorResponse
 from app.services.auth_service import get_api_key_by_header, update_last_used
 
-_api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+_api_key_header = APIKeyHeader(name="X-API-Key", scheme_name="apiKeyAuth", auto_error=False)
 
 
 def _unauthorized(code: str, message: str) -> HTTPException:

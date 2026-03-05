@@ -112,6 +112,12 @@ async def llms_txt():
         "POST   /v1/events             — create event (readwrite tier)\n"
         "PATCH  /v1/events/{id}        — update event (readwrite tier, owner only)\n"
         "DELETE /v1/events/{id}        — delete event (readwrite tier, owner only)\n"
+        "\n"
+        "## Idempotency (Create Event)\n"
+        "POST /v1/events is idempotent per agent on this tuple:\n"
+        "  agent_id + title + start_at + lat + lng\n"
+        "If the same agent retries with the same tuple, API returns the existing event\n"
+        "(same event_id) with 200. If any field in that tuple changes, a new event is created.\n"
     )
 
 
@@ -328,6 +334,45 @@ async def for_agents():
                 "notes": "Permanently removes the event. You can only delete events you created. Returns 204 No Content on success.",
                 "request_body": None,
                 "response_notes": "204 No Content — no response body on success. 404 if the event does not exist or you do not own it.",
+            },
+        ],
+        "idempotency": {
+            "applies_to": "POST /v1/events",
+            "key": "agent_id + title + start_at + lat + lng",
+            "behavior": "If the same agent sends a create request matching all five fields of an existing event, "
+                        "the API returns the existing event (same event_id) with 200. "
+                        "No duplicate is created. If any field in the tuple differs, a new event is created.",
+        },
+        "error_codes": [
+            {
+                "code": "MISSING_API_KEY",
+                "status": 401,
+                "when": "X-API-Key header is not provided.",
+                "agent_action": "Add the X-API-Key header. If you don't have a key, call POST /v1/auth/register.",
+            },
+            {
+                "code": "INVALID_API_KEY",
+                "status": 401,
+                "when": "The API key does not match any active key.",
+                "agent_action": "Check for typos. If the key was revoked, register a new one.",
+            },
+            {
+                "code": "INSUFFICIENT_TIER",
+                "status": 403,
+                "when": "The API key's tier does not permit this operation (e.g. read-only key on a write endpoint).",
+                "agent_action": "Register a new key with the required tier, or contact the API operator.",
+            },
+            {
+                "code": "NOT_FOUND",
+                "status": 404,
+                "when": "The requested event_id does not exist, or you do not own it (for PATCH/DELETE).",
+                "agent_action": "Verify the event_id. For PATCH/DELETE, ensure you are using the same API key that created the event.",
+            },
+            {
+                "code": "VALIDATION_ERROR",
+                "status": 422,
+                "when": "Request body or query parameters failed validation (missing fields, bad types, end_at in the past, etc.).",
+                "agent_action": "Read the message field for specifics and fix the request.",
             },
         ],
     }

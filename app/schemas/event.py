@@ -207,6 +207,7 @@ class EventsNearbyResponse(BaseModel):
     events: List[EventResponse]
     count: int = Field(..., description="Number of events returned in this response")
     total: int = Field(..., description="Total matching events (may exceed count)")
+    next_cursor: Optional[str] = Field(None, description="Cursor for next page; null if no more results")
 
     model_config = {
         "json_schema_extra": {
@@ -252,6 +253,7 @@ class EventsNearbyResponse(BaseModel):
                     ],
                     "count": 2,
                     "total": 45,
+                    "next_cursor": "MjAyNi0wMy0xNlQwODowMDowMCswMDowMHwwMUpBUVJTNTY3ODkwMTIzNE1OT1BRUlNU",
                 }
             ]
         }

@@ -106,7 +106,8 @@ async def llms_txt():
         "POST /v1/auth/register  — register an agent, receive API key\n"
         "GET    /v1/events/nearby       — find events by lat/lng/radius with optional filters\n"
         "  Optional filters: event_type (list), audience (list), starts_after, starts_before\n"
-        "  Returns up to 30 soonest events, ordered by start_at, with count/total fields\n"
+        "  Pagination: limit (1–100, default 30), cursor (opaque, from next_cursor)\n"
+        "  Returns events ordered by start_at, with count, total, and next_cursor fields\n"
         "GET    /v1/events/{id}        — get single event by ULID\n"
         "POST   /v1/events             — create event (readwrite tier)\n"
         "PATCH  /v1/events/{id}        — update event (readwrite tier, owner only)\n"
@@ -222,9 +223,11 @@ async def for_agents():
                     "audience": "optional — repeat for multiple (kids, adults, all). Omit for all audiences",
                     "starts_after": "optional — ISO 8601 datetime, inclusive (>=). Ended events are always excluded",
                     "starts_before": "optional — ISO 8601 datetime, exclusive (<)",
+                    "limit": "optional — page size (1–100, default 30)",
+                    "cursor": "optional — opaque cursor from a previous response's next_cursor. Omit for first page",
                 },
                 "request_body": None,
-                "response_notes": "Returns up to 30 soonest events ordered by start_at. count = events returned, total = all matching events.",
+                "response_notes": "Returns events ordered by start_at. count = events returned, total = all matching events. Pass next_cursor to fetch the next page; null means no more results.",
                 "response_example": {
                     "events": [
                         {
@@ -266,6 +269,7 @@ async def for_agents():
                     ],
                     "count": 2,
                     "total": 45,
+                    "next_cursor": "MjAyNi0wMy0xNlQwODowMDowMCswMDowMHwwMUpBUVJTNTY3ODkwMTIzNE1OT1BRUlNU",
                 },
             },
             {

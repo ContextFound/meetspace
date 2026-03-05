@@ -21,7 +21,7 @@ RADIUS_MAX = 100.0
     "/nearby",
     response_model=EventsNearbyResponse,
     summary="Find events by location",
-    response_description="Up to 30 soonest upcoming events matching the filters. Response includes count/total so callers know if results were capped.",
+    response_description="Paginated events matching the filters, ordered by start_at. Use next_cursor to fetch subsequent pages.",
 )
 async def nearby(
     lat: float = Query(..., ge=-90, le=90, description="Latitude"),
@@ -31,19 +31,23 @@ async def nearby(
     audience: Optional[List[Audience]] = Query(None, description="Filter by audience(s). Omit for all audiences."),
     starts_after: Optional[datetime] = Query(None, description="Only events starting at or after this time (inclusive, ISO 8601). Ended events are always excluded."),
     starts_before: Optional[datetime] = Query(None, description="Only events starting before this time (exclusive, ISO 8601)."),
+    limit: int = Query(30, ge=1, le=100, description="Page size (1–100, default 30)."),
+    cursor: Optional[str] = Query(None, description="Cursor from a previous response's next_cursor. Omit for first page."),
     db: AsyncSession = Depends(get_db),
     api_key: ApiKey = Depends(require_api_key),
 ):
     event_type_values = [e.value for e in event_type] if event_type else None
     audience_values = [a.value for a in audience] if audience else None
-    events, count, total = await get_events_nearby(
+    events, count, total, next_cursor = await get_events_nearby(
         db, lat, lng, radius,
         event_types=event_type_values,
         audiences=audience_values,
         starts_after=starts_after,
         starts_before=starts_before,
+        limit=limit,
+        cursor=cursor,
     )
-    return EventsNearbyResponse(events=events, count=count, total=total)
+    return EventsNearbyResponse(events=events, count=count, total=total, next_cursor=next_cursor)
 
 
 @router.get(

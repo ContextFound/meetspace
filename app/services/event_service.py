@@ -1,3 +1,4 @@
+import base64
 import math
 from datetime import datetime, timezone
 from typing import List, Optional, Tuple
@@ -14,7 +15,19 @@ from app.schemas.event import EventCreate, EventResponse, EventUpdate
 
 MILES_TO_METERS = 1609.34
 METERS_PER_DEG_LAT = 111_320.0
-NEARBY_RETURN_LIMIT = 30
+NEARBY_LIMIT_DEFAULT = 30
+NEARBY_LIMIT_MAX = 100
+
+
+def _encode_cursor(start_at: datetime, event_id: str) -> str:
+    raw = f"{start_at.isoformat()}|{event_id}"
+    return base64.urlsafe_b64encode(raw.encode()).decode()
+
+
+def _decode_cursor(cursor: str) -> Tuple[datetime, str]:
+    raw = base64.urlsafe_b64decode(cursor.encode()).decode()
+    iso, event_id = raw.rsplit("|", 1)
+    return datetime.fromisoformat(iso), event_id
 
 
 def _event_to_response(e: Event) -> EventResponse:
@@ -159,14 +172,15 @@ async def get_events_nearby(
     audiences: Optional[List[str]] = None,
     starts_after: Optional[datetime] = None,
     starts_before: Optional[datetime] = None,
-) -> Tuple[List[EventResponse], int, int]:
+    limit: int = NEARBY_LIMIT_DEFAULT,
+    cursor: Optional[str] = None,
+) -> Tuple[List[EventResponse], int, int, Optional[str]]:
     now = datetime.now(timezone.utc)
 
     filters = [or_(Event.end_at.is_(None), Event.end_at >= now)]
 
     if starts_after is not None:
         filters.append(Event.start_at >= starts_after)
-
     if starts_before is not None:
         filters.append(Event.start_at < starts_before)
     if radius_miles is not None:
@@ -185,14 +199,29 @@ async def get_events_nearby(
     )
     total = total_result.scalar_one()
 
+    if cursor is not None:
+        cursor_start_at, cursor_event_id = _decode_cursor(cursor)
+        filters.append(
+            or_(
+                Event.start_at > cursor_start_at,
+                and_(Event.start_at == cursor_start_at, Event.event_id > cursor_event_id),
+            )
+        )
+
     stmt = (
         select(Event)
         .where(*filters)
-        .order_by(Event.start_at.asc())
-        .limit(NEARBY_RETURN_LIMIT)
+        .order_by(Event.start_at.asc(), Event.event_id.asc())
+        .limit(limit + 1)
     )
     result = await db.execute(stmt)
     rows = result.scalars().all()
 
+    next_cursor: Optional[str] = None
+    if len(rows) > limit:
+        rows = rows[:limit]
+        last = rows[-1]
+        next_cursor = _encode_cursor(last.start_at, last.event_id)
+
     events = [_event_to_response(e) for e in rows]
-    return events, len(events), total
+    return events, len(events), total, next_cursor

@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
@@ -18,6 +18,17 @@ def error_response(code: str, message: str, status: int) -> dict:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
+
+
+async def http_exception_handler(request: Request, exc: HTTPException):
+    content = exc.detail
+    if isinstance(content, str):
+        content = error_response(f"HTTP_{exc.status_code}", content, exc.status_code)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=content,
+        headers=getattr(exc, "headers", None),
+    )
 
 
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -40,6 +51,7 @@ app = FastAPI(
     ],
 )
 
+app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
 app.add_middleware(

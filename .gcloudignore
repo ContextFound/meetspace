@@ -1,0 +1,16 @@
+#!include:.gitignore
+
+# Flutter web app -- deployed separately via Firebase Hosting
+web/
+
+# Alembic migrations are not needed in the API container at runtime
+alembic/
+alembic.ini
+
+# Resources / docs
+resources/
+*.md
+
+# Git
+.git/
+.gitignore

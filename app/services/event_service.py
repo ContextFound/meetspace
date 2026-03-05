@@ -2,7 +2,7 @@ import math
 from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from ulid import ULID
@@ -115,6 +115,8 @@ async def update_event(
     if event.end_at is not None:
         if event.end_at <= event.start_at:
             raise ValueError("end_at must be after start_at")
+        if event.end_at <= datetime.now(timezone.utc):
+            raise ValueError("end_at must be in the future")
         try:
             tz = ZoneInfo(event.timezone)
             if event.start_at.astimezone(tz).date() != event.end_at.astimezone(tz).date():
@@ -160,8 +162,10 @@ async def get_events_nearby(
 ) -> Tuple[List[EventResponse], int, int]:
     now = datetime.now(timezone.utc)
 
-    floor = max(now, starts_after) if starts_after else now
-    filters = [Event.start_at >= floor]
+    filters = [or_(Event.end_at.is_(None), Event.end_at >= now)]
+
+    if starts_after is not None:
+        filters.append(Event.start_at >= starts_after)
 
     if starts_before is not None:
         filters.append(Event.start_at < starts_before)

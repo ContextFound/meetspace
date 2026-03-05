@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import List, Optional
 from urllib.parse import urlparse
@@ -61,6 +61,8 @@ class EventCreate(BaseModel):
         if self.end_at is not None:
             if self.end_at <= self.start_at:
                 raise ValueError("end_at must be after start_at")
+            if self.end_at <= datetime.now(timezone.utc):
+                raise ValueError("end_at must be in the future")
             try:
                 tz = ZoneInfo(self.timezone)
                 start_local = self.start_at.astimezone(tz).date()

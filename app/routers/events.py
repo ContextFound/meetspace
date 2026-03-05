@@ -29,7 +29,7 @@ async def nearby(
     radius: Optional[float] = Query(None, ge=RADIUS_MIN, le=RADIUS_MAX, description="Radius in miles. Omit for all events."),
     event_type: Optional[List[EventType]] = Query(None, description="Filter by event type(s). Omit for all types."),
     audience: Optional[List[Audience]] = Query(None, description="Filter by audience(s). Omit for all audiences."),
-    starts_after: Optional[datetime] = Query(None, description="Only events starting at or after this time (inclusive, ISO 8601). Past events are always excluded."),
+    starts_after: Optional[datetime] = Query(None, description="Only events starting at or after this time (inclusive, ISO 8601). Ended events are always excluded."),
     starts_before: Optional[datetime] = Query(None, description="Only events starting before this time (exclusive, ISO 8601)."),
     db: AsyncSession = Depends(get_db),
     api_key: ApiKey = Depends(require_api_key),

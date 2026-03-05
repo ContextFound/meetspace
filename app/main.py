@@ -220,7 +220,7 @@ async def for_agents():
                     "radius": "optional — miles (0.1–100). Omit for any distance",
                     "event_type": "optional — repeat for multiple (e.g. event_type=meetup&event_type=talk). Omit for all types",
                     "audience": "optional — repeat for multiple (kids, adults, all). Omit for all audiences",
-                    "starts_after": "optional — ISO 8601 datetime, inclusive (>=). Past events are always excluded",
+                    "starts_after": "optional — ISO 8601 datetime, inclusive (>=). Ended events are always excluded",
                     "starts_before": "optional — ISO 8601 datetime, exclusive (<)",
                 },
                 "request_body": None,

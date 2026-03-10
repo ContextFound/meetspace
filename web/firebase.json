@@ -3,8 +3,24 @@
     "public": "build/web",
     "ignore": [
       "firebase.json",
-      "**/.*",
       "**/node_modules/**"
+    ],
+    "headers": [
+      {
+        "source": "/agent.json",
+        "headers": [{ "key": "Content-Type", "value": "application/json" }]
+      },
+      {
+        "source": "/.well-known/**",
+        "headers": [{ "key": "Content-Type", "value": "text/plain; charset=utf-8" }]
+      }
+    ],
+    "redirects": [
+      {
+        "source": "/openapi.json",
+        "destination": "https://api.meetspace.events/openapi.json",
+        "type": 302
+      }
     ],
     "rewrites": [
       {

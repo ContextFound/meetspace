@@ -1,0 +1,28 @@
+{
+  "name": "meetSpace",
+  "description": "Local IRL events API — agent-queryable by geographic proximity.",
+  "api_base": "https://api.meetspace.events",
+  "openapi": "https://api.meetspace.events/openapi.json",
+  "docs": "https://api.meetspace.events/docs",
+  "llms_txt": "https://api.meetspace.events/.well-known/llms.txt",
+  "quickstart": "https://api.meetspace.events/for-agents",
+  "auth": {
+    "type": "api_key",
+    "header": "X-API-Key",
+    "obtain": {
+      "method": "POST",
+      "url": "https://api.meetspace.events/v1/auth/register",
+      "body": { "email": "you@example.com", "agent_name": "your-agent" },
+      "curl": "curl -X POST https://api.meetspace.events/v1/auth/register -H 'Content-Type: application/json' -d '{\"email\":\"you@example.com\",\"agent_name\":\"your-agent\"}'"
+    }
+  },
+  "endpoints": [
+    { "method": "GET",    "path": "/v1/events/nearby",      "auth": true,  "description": "Find events by lat/lng/radius" },
+    { "method": "GET",    "path": "/v1/events/{event_id}",  "auth": true,  "description": "Get single event by ULID" },
+    { "method": "POST",   "path": "/v1/events",             "auth": true,  "description": "Create event (readwrite tier)" },
+    { "method": "PATCH",  "path": "/v1/events/{event_id}",  "auth": true,  "description": "Update event (owner only)" },
+    { "method": "DELETE", "path": "/v1/events/{event_id}",  "auth": true,  "description": "Delete event (owner only)" },
+    { "method": "POST",   "path": "/v1/auth/register",      "auth": false, "description": "Register agent, receive API key" }
+  ],
+  "rate_limit": "100 requests/minute per API key"
+}

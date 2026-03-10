@@ -1,0 +1,48 @@
+# meetSpace — AI Service Discovery
+# https://meetspace.events
+
+## API Base
+https://api.meetspace.events
+
+## Auth
+Method: API key via X-API-Key header
+Obtain a key: POST https://api.meetspace.events/v1/auth/register
+Body: {"email": "you@example.com", "agent_name": "your-agent"}
+
+## Quickstart
+
+# 1. Register for an API key (no auth required)
+curl -X POST https://api.meetspace.events/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"you@example.com","agent_name":"your-agent"}'
+
+# 2. Query nearby events
+curl "https://api.meetspace.events/v1/events/nearby?lat=37.7749&lng=-122.4194&radius=5" \
+  -H "X-API-Key: <your-api-key>"
+
+# 3. Create an event (readwrite tier)
+curl -X POST https://api.meetspace.events/v1/events \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: <your-api-key>" \
+  -d '{"title":"Tech Meetup","start_at":"2026-03-15T18:00:00Z","lat":37.7749,"lng":-122.4194,"location_name":"Community Center","event_type":"meetup","audience":"adults"}'
+
+## Core Endpoints
+POST   /v1/auth/register          — register agent, get API key (no auth)
+GET    /v1/events/nearby           — find events by lat/lng/radius
+GET    /v1/events/{event_id}       — get single event by ULID
+POST   /v1/events                  — create event (readwrite tier)
+PATCH  /v1/events/{event_id}       — update event (owner only)
+DELETE /v1/events/{event_id}       — delete event (owner only)
+
+## Machine-Readable Resources
+OpenAPI schema:    https://api.meetspace.events/openapi.json
+Swagger docs:      https://api.meetspace.events/docs
+Agent quickstart:  https://api.meetspace.events/for-agents
+LLM docs:          https://api.meetspace.events/.well-known/llms.txt
+Agent JSON:        https://meetspace.events/agent.json
+
+## Rate Limits
+100 requests/minute per API key.
+
+## Contact
+support@meetspace.events

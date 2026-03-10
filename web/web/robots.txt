@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /agent.json
+Allow: /.well-known/ai-service.txt
+Allow: /robots.txt
+
+Sitemap: https://api.meetspace.events/openapi.json
+
+# API discovery
+# Agent quickstart: https://meetspace.events/agent.json
+# AI service info: https://meetspace.events/.well-known/ai-service.txt
+# OpenAPI schema:  https://meetspace.events/openapi.json (redirects to API)

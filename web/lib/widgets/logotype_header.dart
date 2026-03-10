@@ -5,7 +5,7 @@ import '../theme/app_theme.dart';
 class LogotypeHeader extends StatelessWidget {
   const LogotypeHeader({
     super.key,
-    this.height = 40,
+    this.height = 48,
     this.onTap,
   });
 

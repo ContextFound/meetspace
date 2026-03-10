@@ -297,7 +297,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       },
       child: Scaffold(
       appBar: AppBar(
-        leadingWidth: 160,
+        leadingWidth: 300,
         leading: LogotypeHeader(onTap: _confirmDiscardChanges),
         title: const Text('Create New Event'),
         actions: [

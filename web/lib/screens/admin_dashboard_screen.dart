@@ -25,6 +25,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   String? _expandedAgentId;
   List<EventResponse>? _expandedEvents;
   bool _eventsLoading = false;
+  String? _expandedEventId;
 
   User? get _user => FirebaseAuth.instance.currentUser;
 
@@ -86,6 +87,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       setState(() {
         _expandedAgentId = null;
         _expandedEvents = null;
+        _expandedEventId = null;
       });
       return;
     }
@@ -94,6 +96,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       _expandedAgentId = agentId;
       _expandedEvents = null;
       _eventsLoading = true;
+      _expandedEventId = null;
     });
 
     try {
@@ -113,6 +116,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         });
       }
     }
+  }
+
+  void _toggleEvent(String eventId) {
+    setState(() {
+      _expandedEventId = _expandedEventId == eventId ? null : eventId;
+    });
   }
 
   Future<void> _logout() async {
@@ -506,48 +515,116 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _buildEventRow(ThemeData theme, EventResponse event) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    final isExpanded = _expandedEventId == event.eventId;
+
+    return Column(
+      key: ValueKey(event.eventId),
+      children: [
+        InkWell(
+          onTap: () => _toggleEvent(event.eventId),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: Row(
               children: [
-                Text(event.title, style: theme.textTheme.bodyMedium),
-                const SizedBox(height: 2),
-                Text(
-                  event.locationName,
-                  style: theme.textTheme.bodySmall,
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(event.title, style: theme.textTheme.bodyMedium),
+                      const SizedBox(height: 2),
+                      Text(
+                        event.locationName,
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _chip(theme, event.eventType),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 130,
+                  child: Text(
+                    _formatDateTime(event.startAt),
+                    style: theme.textTheme.bodySmall,
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: Icon(
+                    Icons.delete_outline,
+                    size: 16,
+                    color: theme.colorScheme.error,
+                  ),
+                  tooltip: 'Delete event',
+                  onPressed: () => _deleteEvent(theme, event),
+                  splashRadius: 16,
+                  constraints: const BoxConstraints(),
+                  padding: const EdgeInsets.all(4),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  isExpanded ? Icons.expand_less : Icons.expand_more,
+                  size: 16,
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          _chip(theme, event.eventType),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 130,
-            child: Text(
-              _formatDateTime(event.startAt),
-              style: theme.textTheme.bodySmall,
-              textAlign: TextAlign.right,
+        ),
+        if (isExpanded) _buildEventDetails(theme, event),
+      ],
+    );
+  }
+
+  Widget _buildEventDetails(ThemeData theme, EventResponse event) {
+    final labelStyle = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurface.withAlpha(150),
+    );
+    final valueStyle = theme.textTheme.bodySmall;
+
+    Widget row(String label, String value) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 90,
+              child: Text(label, style: labelStyle),
             ),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: Icon(
-              Icons.delete_outline,
-              size: 16,
-              color: theme.colorScheme.error,
-            ),
-            tooltip: 'Delete event',
-            onPressed: () => _deleteEvent(theme, event),
-            splashRadius: 16,
-            constraints: const BoxConstraints(),
-            padding: const EdgeInsets.all(4),
-          ),
+            Expanded(child: Text(value, style: valueStyle)),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.onSurface.withAlpha(30),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (event.description != null && event.description!.isNotEmpty)
+            row('Description', event.description!),
+          if (event.endAt != null)
+            row('End', _formatDateTime(event.endAt!)),
+          row('Timezone', event.timezone),
+          if (event.address != null && event.address!.isNotEmpty)
+            row('Address', event.address!),
+          row('Coordinates', '${event.lat}, ${event.lng}'),
+          if (event.url != null && event.url!.isNotEmpty)
+            row('URL', event.url!),
+          if (event.cost != null && event.cost!.isNotEmpty)
+            row('Cost', event.cost!),
+          row('Audience', event.audience),
+          row('Created', _formatDateTime(event.createdAt)),
         ],
       ),
     );

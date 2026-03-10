@@ -3,7 +3,7 @@ import math
 from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from ulid import ULID
@@ -161,6 +161,14 @@ async def delete_event(
     await db.delete(event)
     await db.flush()
     return True
+
+
+async def delete_events_by_agent(db: AsyncSession, agent_id) -> int:
+    result = await db.execute(
+        delete(Event).where(Event.agent_id == agent_id)
+    )
+    await db.flush()
+    return result.rowcount
 
 
 async def get_events_nearby(

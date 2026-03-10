@@ -15,6 +15,7 @@ from app.schemas.admin import (
     AgentSummary,
 )
 from app.schemas.event import EventResponse
+from app.services.event_service import delete_event, delete_events_by_agent
 
 router = APIRouter()
 
@@ -122,3 +123,50 @@ async def get_agent_events(
     ]
 
     return AgentEventsResponse(agent=agent_summary, events=event_responses)
+
+
+@router.delete(
+    "/events/{event_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def admin_delete_event(
+    event_id: str,
+    _user: dict = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    deleted = await delete_event(db, event_id, None, is_admin=True)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+
+@router.delete(
+    "/agents/{agent_id}/events",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def admin_delete_agent_events(
+    agent_id: UUID,
+    _user: dict = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    agent_result = await db.execute(select(ApiKey).where(ApiKey.id == agent_id))
+    if agent_result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    await delete_events_by_agent(db, agent_id)
+
+
+@router.delete(
+    "/agents/{agent_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def admin_delete_agent(
+    agent_id: UUID,
+    _user: dict = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    agent_result = await db.execute(select(ApiKey).where(ApiKey.id == agent_id))
+    agent = agent_result.scalar_one_or_none()
+    if agent is None:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    await delete_events_by_agent(db, agent_id)
+    await db.delete(agent)
+    await db.flush()

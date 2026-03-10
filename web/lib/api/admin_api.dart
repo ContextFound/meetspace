@@ -48,6 +48,30 @@ class AdminApiClient {
     throw Exception(_extractError(r));
   }
 
+  Future<void> deleteEvent(String eventId) async {
+    final url = _url('/v1/admin/events/$eventId');
+    final r = await http.delete(Uri.parse(url), headers: _headers);
+    if (r.statusCode != 204) {
+      throw Exception(_extractError(r));
+    }
+  }
+
+  Future<void> deleteAgentEvents(String agentId) async {
+    final url = _url('/v1/admin/agents/$agentId/events');
+    final r = await http.delete(Uri.parse(url), headers: _headers);
+    if (r.statusCode != 204) {
+      throw Exception(_extractError(r));
+    }
+  }
+
+  Future<void> deleteAgent(String agentId) async {
+    final url = _url('/v1/admin/agents/$agentId');
+    final r = await http.delete(Uri.parse(url), headers: _headers);
+    if (r.statusCode != 204) {
+      throw Exception(_extractError(r));
+    }
+  }
+
   String _extractError(http.Response r) {
     try {
       final body = jsonDecode(r.body);

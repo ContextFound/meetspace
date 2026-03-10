@@ -120,6 +120,110 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     if (mounted) context.go('/admin');
   }
 
+  Future<bool> _confirm(
+    ThemeData theme, {
+    required String title,
+    required String content,
+  }) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(content),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: theme.colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    return result == true;
+  }
+
+  Future<void> _deleteEvent(ThemeData theme, EventResponse event) async {
+    final confirmed = await _confirm(
+      theme,
+      title: 'Delete event',
+      content: "Delete event '${event.title}'?",
+    );
+    if (!confirmed || _expandedAgentId == null) return;
+    try {
+      await _refreshToken();
+      await _client!.deleteEvent(event.eventId);
+      if (mounted) _toggleAgent(_expandedAgentId!);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteAllEvents(ThemeData theme) async {
+    final agentId = _expandedAgentId;
+    final count = _expandedEvents?.length ?? 0;
+    if (agentId == null || count == 0) return;
+    final confirmed = await _confirm(
+      theme,
+      title: 'Delete all events',
+      content: 'Delete all $count event${count == 1 ? '' : 's'} for this agent?',
+    );
+    if (!confirmed) return;
+    try {
+      await _refreshToken();
+      await _client!.deleteAgentEvents(agentId);
+      if (mounted) {
+        _toggleAgent(agentId);
+        _loadAgents();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteAgent(ThemeData theme, AdminAgent agent) async {
+    final confirmed = await _confirm(
+      theme,
+      title: 'Delete agent',
+      content:
+          "Delete agent '${agent.agentName}'? "
+          'This will first delete all ${agent.eventCount} '
+          "event${agent.eventCount == 1 ? '' : 's'} created by this agent, "
+          'then remove the agent. This cannot be undone.',
+    );
+    if (!confirmed) return;
+    try {
+      await _refreshToken();
+      await _client!.deleteAgent(agent.id);
+      if (mounted) {
+        if (_expandedAgentId == agent.id) {
+          _expandedAgentId = null;
+          _expandedEvents = null;
+        }
+        _loadAgents();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -127,6 +231,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Back to event lookup',
+          onPressed: () => context.go('/'),
+        ),
         title: const Text('meetspace admin'),
         actions: [
           if (user != null)
@@ -287,7 +396,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               _formatDate(agent.createdAt),
                               style: theme.textTheme.bodySmall,
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 4),
+                            IconButton(
+                              icon: Icon(
+                                Icons.delete_outline,
+                                size: 18,
+                                color: theme.colorScheme.error,
+                              ),
+                              tooltip: 'Delete agent',
+                              onPressed: () => _deleteAgent(theme, agent),
+                              splashRadius: 18,
+                              constraints: const BoxConstraints(),
+                              padding: const EdgeInsets.all(4),
+                            ),
+                            const SizedBox(width: 4),
                             Icon(
                               isExpanded
                                   ? Icons.expand_less
@@ -354,9 +476,26 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Text(
-              'Events',
-              style: theme.textTheme.labelLarge,
+            child: Row(
+              children: [
+                Text(
+                  'Events',
+                  style: theme.textTheme.titleLarge,
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: Icon(
+                    Icons.delete_sweep,
+                    size: 20,
+                    color: theme.colorScheme.error,
+                  ),
+                  tooltip: 'Delete all events',
+                  onPressed: () => _deleteAllEvents(theme),
+                  splashRadius: 18,
+                  constraints: const BoxConstraints(),
+                  padding: const EdgeInsets.all(4),
+                ),
+              ],
             ),
           ),
           ...events.map((e) => _buildEventRow(theme, e)),
@@ -395,6 +534,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               style: theme.textTheme.bodySmall,
               textAlign: TextAlign.right,
             ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: Icon(
+              Icons.delete_outline,
+              size: 16,
+              color: theme.colorScheme.error,
+            ),
+            tooltip: 'Delete event',
+            onPressed: () => _deleteEvent(theme, event),
+            splashRadius: 16,
+            constraints: const BoxConstraints(),
+            padding: const EdgeInsets.all(4),
           ),
         ],
       ),

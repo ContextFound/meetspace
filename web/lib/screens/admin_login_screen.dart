@@ -179,6 +179,15 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
             ),
             Positioned(
               top: 8,
+              left: 8,
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                tooltip: 'Back to event lookup',
+                onPressed: () => context.go('/'),
+              ),
+            ),
+            Positioned(
+              top: 8,
               right: 8,
               child: IconButton(
                 icon: Icon(

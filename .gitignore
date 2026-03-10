@@ -47,6 +47,9 @@ htmlcov/
 *.swp
 *~
 
+# Deploy runbook (contains Firebase config values)
+resources/full_cloud_deploy_steps.md
+
 # OS
 .DS_Store
 Thumbs.db

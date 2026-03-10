@@ -7,3 +7,4 @@ pydantic-settings>=2.1.0,<2.6.0
 alembic>=1.13.0,<1.14.0
 passlib[argon2]>=1.7.4,<1.8.0
 python-ulid>=2.0.0,<3.0.0
+firebase-admin>=6.0.0,<7.0.0

@@ -1,13 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
+import 'package:go_router/go_router.dart';
 
-import 'screens/events_list_screen.dart';
-import 'screens/landing_screen.dart';
-import 'services/auth_service.dart';
+import 'screens/admin_dashboard_screen.dart';
+import 'screens/admin_login_screen.dart';
+import 'screens/home_screen.dart';
 import 'theme/app_theme.dart';
 
 void main() {
+  usePathUrlStrategy();
   runApp(const MeetSpaceApp());
 }
+
+final _router = GoRouter(
+  routes: [
+    GoRoute(
+      path: '/',
+      builder: (context, state) => const HomeScreen(),
+    ),
+    GoRoute(
+      path: '/admin',
+      builder: (context, state) => const AdminLoginScreen(),
+    ),
+    GoRoute(
+      path: '/admin/dashboard',
+      builder: (context, state) => const AdminDashboardScreen(),
+    ),
+  ],
+);
 
 class MeetSpaceApp extends StatefulWidget {
   const MeetSpaceApp({super.key});
@@ -17,13 +37,9 @@ class MeetSpaceApp extends StatefulWidget {
 }
 
 class _MeetSpaceAppState extends State<MeetSpaceApp> {
-  String? _apiKey;
-  bool _loading = true;
-
   @override
   void initState() {
     super.initState();
-    _loadKey();
     themeNotifier.addListener(_onThemeChanged);
   }
 
@@ -35,44 +51,15 @@ class _MeetSpaceAppState extends State<MeetSpaceApp> {
 
   void _onThemeChanged() => setState(() {});
 
-  Future<void> _loadKey() async {
-    final key = await AuthService.instance.getStoredApiKey();
-    if (mounted) {
-      setState(() {
-        _apiKey = key;
-        _loading = false;
-      });
-    }
-  }
-
-  void _onLoggedIn(String key) async {
-    await AuthService.instance.saveApiKey(key);
-    if (mounted) setState(() => _apiKey = key);
-  }
-
-  void _onLogout() async {
-    await AuthService.instance.clearApiKey();
-    if (mounted) setState(() => _apiKey = null);
-  }
-
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'meetspace',
       debugShowCheckedModeBanner: false,
       theme: meetSpaceLightTheme,
       darkTheme: meetSpaceDarkTheme,
       themeMode: themeNotifier.value,
-      home: _loading
-          ? const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            )
-          : _apiKey == null
-              ? LandingScreen(onLoggedIn: _onLoggedIn)
-              : EventsListScreen(
-                  apiKey: _apiKey!,
-                  onLogout: _onLogout,
-                ),
+      routerConfig: _router,
     );
   }
 }

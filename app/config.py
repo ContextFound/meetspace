@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://user:password@localhost:5432/meetspace"
     environment: str = "development"
     api_key_prefix: str = "ms_test_"
+    admin_emails: List[str] = []
     cors_origins: List[str] = [
         "https://meetspace.events",
         "https://www.meetspace.events",

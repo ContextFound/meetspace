@@ -7,7 +7,7 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from app.config import settings
-from app.routers import auth, events
+from app.routers import admin, auth, events
 from app.schemas.common import ErrorDetail, ErrorResponse
 
 
@@ -59,11 +59,12 @@ app.add_middleware(
     allow_origins=settings.effective_cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "X-API-Key"],
+    allow_headers=["Content-Type", "X-API-Key", "Authorization"],
 )
 
 app.include_router(auth.router, prefix="/v1/auth", tags=["auth"])
 app.include_router(events.router, prefix="/v1/events", tags=["events"])
+app.include_router(admin.router, prefix="/v1/admin", tags=["admin"])
 
 
 @app.get("/", include_in_schema=False)
